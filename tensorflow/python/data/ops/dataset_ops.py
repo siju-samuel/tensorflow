@@ -223,6 +223,13 @@ class Dataset(object):
   def from_tensors(tensors):
     """Creates a `Dataset` with a single element, comprising the given tensors.
 
+    Note that if `tensors` contains a NumPy array, and eager execution is not
+    enabled, the values will be embedded in the graph as one or more
+    @{tf.constant} operations. For large datasets (> 1 GB), this can waste
+    memory and run into byte limits of graph serialization.  If tensors contains
+    one or more large NumPy arrays, consider the alternative described in
+    @{$programmers_guide/datasets#consuming_numpy_arrays$this guide}.
+
     Args:
       tensors: A nested structure of tensors.
 
@@ -234,6 +241,13 @@ class Dataset(object):
   @staticmethod
   def from_tensor_slices(tensors):
     """Creates a `Dataset` whose elements are slices of the given tensors.
+
+    Note that if `tensors` contains a NumPy array, and eager execution is not
+    enabled, the values will be embedded in the graph as one or more
+    @{tf.constant} operations. For large datasets (> 1 GB), this can waste
+    memory and run into byte limits of graph serialization.  If tensors contains
+    one or more large NumPy arrays, consider the alternative described in
+    @{$programmers_guide/datasets#consuming_numpy_arrays$this guide}.
 
     Args:
       tensors: A nested structure of tensors, each having the same size in the
@@ -409,13 +423,23 @@ class Dataset(object):
         # Use the same _convert function from the py_func() implementation to
         # convert the returned values to arrays early, so that we can inspect
         # their values.
-        # pylint: disable=protected-access
-        ret_arrays = [
-            script_ops.FuncRegistry._convert(ret, dtype=dtype.as_numpy_dtype)
-            for ret, dtype in zip(
-                nest.flatten_up_to(output_types, values), flattened_types)
-        ]
-        # pylint: enable=protected-access
+        try:
+          flattened_values = nest.flatten_up_to(output_types, values)
+        except (TypeError, ValueError):
+          raise TypeError(
+              "`generator` yielded an element that did not match the expected "
+              "structure. The expected structure was %s, but the yielded "
+              "element was %s." % (output_types, values))
+        ret_arrays = []
+        for ret, dtype in zip(flattened_values, flattened_types):
+          try:
+            ret_arrays.append(script_ops.FuncRegistry._convert(  # pylint: disable=protected-access
+                ret, dtype=dtype.as_numpy_dtype))
+          except (TypeError, ValueError):
+            raise TypeError(
+                "`generator` yielded an element that could not be converted to "
+                "the expected type. The expected type was %s, but the yielded "
+                "element was %s." % (dtype.name, ret))
 
         # Additional type and shape checking to ensure that the components
         # of the generated element match the `output_types` and `output_shapes`
@@ -1134,6 +1158,30 @@ class SparseTensorSliceDataset(Dataset):
     return (dtypes.int64, self._sparse_tensor.dtype, dtypes.int64)
 
 
+def flat_structure(dataset):
+  """Helper for setting `output_shapes` and `output_types` attrs of Dataset ops.
+
+  Most Dataset op constructors expect `output_shapes` and `output_types`
+  arguments that represent the flattened structure of an element. This helper
+  function generates these attrs as a keyword argument dictionary, allowing
+  `Dataset._as_variant_tensor()` implementations to pass
+  `**flat_structure(self)` to the op constructor.
+
+  Args:
+    dataset: A @{tf.data.Dataset}.
+
+  Returns:
+    A dictionary of keyword arguments that can be passed to many Dataset op
+    constructors.
+  """
+  return {
+      "output_shapes": nest.flatten(sparse.as_dense_shapes(
+          dataset.output_shapes, dataset.output_classes)),
+      "output_types": nest.flatten(sparse.as_dense_types(
+          dataset.output_types, dataset.output_classes)),
+  }
+
+
 class _GeneratorDataset(Dataset):
   """A `Dataset` that generates elements by invoking a function."""
 
@@ -1306,10 +1354,7 @@ class _GeneratorDataset(Dataset):
         init_func=self._init_func,
         next_func=self._next_func,
         finalize_func=self._finalize_func,
-        output_types=nest.flatten(
-            sparse.as_dense_types(self.output_types, self.output_classes)),
-        output_shapes=nest.flatten(
-            sparse.as_dense_shapes(self.output_shapes, self.output_classes)))
+        **flat_structure(self))
 
   @property
   def output_classes(self):
@@ -1346,16 +1391,7 @@ class ZipDataset(Dataset):
     # pylint: disable=protected-access
     return gen_dataset_ops.zip_dataset(
         [ds._as_variant_tensor() for ds in nest.flatten(self._datasets)],
-        output_shapes=[
-            s
-            for ds in nest.flatten(self._datasets)
-            for s in nest.flatten(ds.output_shapes)
-        ],
-        output_types=[
-            t
-            for ds in nest.flatten(self._datasets)
-            for t in nest.flatten(ds.output_types)
-        ])
+        **flat_structure(self))
     # pylint: enable=protected-access
 
   @property
@@ -1400,10 +1436,7 @@ class ConcatenateDataset(Dataset):
     return gen_dataset_ops.concatenate_dataset(
         self._input_dataset._as_variant_tensor(),
         self._dataset_to_concatenate._as_variant_tensor(),
-        output_shapes=nest.flatten(
-            sparse.as_dense_shapes(self.output_shapes, self.output_classes)),
-        output_types=nest.flatten(
-            sparse.as_dense_types(self.output_types, self.output_classes)))
+        **flat_structure(self))
     # pylint: enable=protected-access
 
   @property
@@ -1441,10 +1474,7 @@ class RepeatDataset(Dataset):
     return gen_dataset_ops.repeat_dataset(
         self._input_dataset._as_variant_tensor(),  # pylint: disable=protected-access
         count=self._count,
-        output_shapes=nest.flatten(
-            sparse.as_dense_shapes(self.output_shapes, self.output_classes)),
-        output_types=nest.flatten(
-            sparse.as_dense_types(self.output_types, self.output_classes)))
+        **flat_structure(self))
 
   @property
   def output_classes(self):
@@ -1491,10 +1521,7 @@ class RangeDataset(Dataset):
         start=self._start,
         stop=self._stop,
         step=self._step,
-        output_shapes=nest.flatten(
-            sparse.as_dense_shapes(self.output_shapes, self.output_classes)),
-        output_types=nest.flatten(
-            sparse.as_dense_types(self.output_types, self.output_classes)))
+        **flat_structure(self))
 
   @property
   def output_classes(self):
@@ -1523,10 +1550,7 @@ class CacheDataset(Dataset):
     return gen_dataset_ops.cache_dataset(
         self._input_dataset._as_variant_tensor(),  # pylint: disable=protected-access
         filename=self._filename,
-        output_shapes=nest.flatten(
-            sparse.as_dense_shapes(self.output_shapes, self.output_classes)),
-        output_types=nest.flatten(
-            sparse.as_dense_types(self.output_types, self.output_classes)))
+        **flat_structure(self))
 
   @property
   def output_classes(self):
@@ -1586,10 +1610,7 @@ class ShuffleDataset(Dataset):
         seed=self._seed,
         seed2=self._seed2,
         reshuffle_each_iteration=self._reshuffle_each_iteration,
-        output_shapes=nest.flatten(
-            sparse.as_dense_shapes(self.output_shapes, self.output_classes)),
-        output_types=nest.flatten(
-            sparse.as_dense_types(self.output_types, self.output_classes)))
+        **flat_structure(self))
 
   @property
   def output_classes(self):
@@ -1617,10 +1638,7 @@ class TakeDataset(Dataset):
     return gen_dataset_ops.take_dataset(
         self._input_dataset._as_variant_tensor(),  # pylint: disable=protected-access
         count=self._count,
-        output_shapes=nest.flatten(
-            sparse.as_dense_shapes(self.output_shapes, self.output_classes)),
-        output_types=nest.flatten(
-            sparse.as_dense_types(self.output_types, self.output_classes)))
+        **flat_structure(self))
 
   @property
   def output_classes(self):
@@ -1648,10 +1666,7 @@ class SkipDataset(Dataset):
     return gen_dataset_ops.skip_dataset(
         self._input_dataset._as_variant_tensor(),  # pylint: disable=protected-access
         count=self._count,
-        output_shapes=nest.flatten(
-            sparse.as_dense_shapes(self.output_shapes, self.output_classes)),
-        output_types=nest.flatten(
-            sparse.as_dense_types(self.output_types, self.output_classes)))
+        **flat_structure(self))
 
   @property
   def output_classes(self):
@@ -1684,19 +1699,13 @@ class BatchDataset(Dataset):
       return gen_dataset_ops.batch_dataset(
           self._input_dataset._as_variant_tensor(),  # pylint: disable=protected-access
           batch_size=self._batch_size,
-          output_shapes=nest.flatten(
-              sparse.as_dense_shapes(self.output_shapes, self.output_classes)),
-          output_types=nest.flatten(
-              sparse.as_dense_types(self.output_types, self.output_classes)))
+          **flat_structure(self))
     else:
       return gen_dataset_ops.batch_dataset_v2(
           self._input_dataset._as_variant_tensor(),  # pylint: disable=protected-access
           batch_size=self._batch_size,
           drop_remainder=self._drop_remainder,
-          output_shapes=nest.flatten(
-              sparse.as_dense_shapes(self.output_shapes, self.output_classes)),
-          output_types=nest.flatten(
-              sparse.as_dense_types(self.output_types, self.output_classes)))
+          **flat_structure(self))
 
   @property
   def output_classes(self):
@@ -2007,10 +2016,7 @@ class MapDataset(Dataset):
         input_t,
         self._map_func.captured_inputs,
         f=self._map_func,
-        output_types=nest.flatten(
-            sparse.as_dense_types(self.output_types, self.output_classes)),
-        output_shapes=nest.flatten(
-            sparse.as_dense_shapes(self.output_shapes, self.output_classes)))
+        **flat_structure(self))
 
   @property
   def output_classes(self):
@@ -2043,10 +2049,7 @@ class ParallelMapDataset(MapDataset):
         self._map_func.captured_inputs,
         f=self._map_func,
         num_parallel_calls=self._num_parallel_calls,
-        output_types=nest.flatten(
-            sparse.as_dense_types(self.output_types, self.output_classes)),
-        output_shapes=nest.flatten(
-            sparse.as_dense_shapes(self.output_shapes, self.output_classes)))
+        **flat_structure(self))
     # pylint: enable=protected-access
 
 
@@ -2097,10 +2100,7 @@ class FlatMapDataset(Dataset):
         self._input_dataset._as_variant_tensor(),  # pylint: disable=protected-access
         self._map_func.captured_inputs,
         f=self._map_func,
-        output_types=nest.flatten(
-            sparse.as_dense_types(self.output_types, self.output_classes)),
-        output_shapes=nest.flatten(
-            sparse.as_dense_shapes(self.output_shapes, self.output_classes)))
+        **flat_structure(self))
 
   @property
   def output_classes(self):
@@ -2137,10 +2137,7 @@ class InterleaveDataset(FlatMapDataset):
         self._cycle_length,
         self._block_length,
         f=self._map_func,  # pylint: disable=protected-access
-        output_types=nest.flatten(
-            sparse.as_dense_types(self.output_types, self.output_classes)),
-        output_shapes=nest.flatten(
-            sparse.as_dense_shapes(self.output_shapes, self.output_classes)))
+        **flat_structure(self))
 
   def _transformation_name(self):
     return "Dataset.interleave()"
@@ -2191,10 +2188,7 @@ class FilterDataset(Dataset):
         self._input_dataset._as_variant_tensor(),  # pylint: disable=protected-access
         other_arguments=self._predicate.captured_inputs,
         predicate=self._predicate,
-        output_types=nest.flatten(
-            sparse.as_dense_types(self.output_types, self.output_classes)),
-        output_shapes=nest.flatten(
-            sparse.as_dense_shapes(self.output_shapes, self.output_classes)))
+        **flat_structure(self))
 
   @property
   def output_classes(self):
@@ -2225,10 +2219,7 @@ class PrefetchDataset(Dataset):
     return gen_dataset_ops.prefetch_dataset(
         self._input_dataset._as_variant_tensor(),  # pylint: disable=protected-access
         buffer_size=self._buffer_size,
-        output_shapes=nest.flatten(
-            sparse.as_dense_shapes(self.output_shapes, self.output_classes)),
-        output_types=nest.flatten(
-            sparse.as_dense_types(self.output_types, self.output_classes)))
+        **flat_structure(self))
 
   @property
   def output_classes(self):
