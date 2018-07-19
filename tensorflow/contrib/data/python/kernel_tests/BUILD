@@ -60,7 +60,7 @@ py_test(
 
 py_test(
     name = "csv_dataset_op_test",
-    size = "small",
+    size = "medium",
     srcs = ["csv_dataset_op_test.py"],
     srcs_version = "PY2AND3",
     tags = ["no_pip"],
@@ -208,7 +208,6 @@ py_test(
     srcs_version = "PY2AND3",
     deps = [
         "//tensorflow/contrib/data/python/ops:optimization",
-        "//tensorflow/core:protos_all_py",
         "//tensorflow/python:client_testlib",
         "//tensorflow/python:errors",
         "//tensorflow/python/data/ops:dataset_ops",
