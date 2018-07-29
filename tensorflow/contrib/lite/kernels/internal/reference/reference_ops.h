@@ -1860,6 +1860,26 @@ void Concatenation(int concat_dim, const Scalar* const* input_data,
   }
 }
 
+template <typename Scalar>
+void Pack(int dim, const Scalar* const* input_data,
+          const Dims<4>* const* input_dims, int inputs_count,
+          Scalar* output_data, const Dims<4>& output_dims) {
+  TFLITE_DCHECK(IsPackedWithoutStrides(output_dims));
+  int outer_size = 1;
+  for (int i = dim + 1; i < 4; i++) {
+    outer_size *= output_dims.sizes[i];
+  }
+  Scalar* output_ptr = output_data;
+  const int copy_size = FlatSize(**input_dims) / outer_size;
+  for (int k = 0; k < outer_size; k++) {
+    for (int i = 0; i < inputs_count; ++i) {
+      memcpy(output_ptr, input_data[i] + k * copy_size,
+             copy_size * sizeof(Scalar));
+      output_ptr += copy_size;
+    }
+  }
+}
+
 // TODO(prabhumk): This is the same as the optimized implementation.
 // TODO(prabhumk): The quantized implementation of concatentation isn't fully
 // quantized as it takes scale as a floating point value. This should be fixed
@@ -3264,7 +3284,8 @@ inline void SpaceToBatchND(const T* input_data, const Dims<4>& input_dims,
                            const Dims<4>& block_shape_dims,
                            const int32* paddings_data,
                            const Dims<4>& paddings_dims, T* output_data,
-                           const Dims<4>& output_dims) {
+                           const Dims<4>& output_dims,
+                           const int32_t pad_value) {
   const int output_batch_size = ArraySize(output_dims, 3);
   const int output_height = ArraySize(output_dims, 2);
   const int output_width = ArraySize(output_dims, 1);
@@ -3289,7 +3310,7 @@ inline void SpaceToBatchND(const T* input_data, const Dims<4>& input_dims,
                 padding_top + input_height ||
             out_w * block_shape_width + shift_w < padding_left ||
             out_w * block_shape_width + shift_w >= padding_left + input_width) {
-          memset(out, 0, depth * sizeof(T));
+          memset(out, pad_value, depth * sizeof(T));
         } else {
           const T* in =
               input_data +
@@ -3302,6 +3323,17 @@ inline void SpaceToBatchND(const T* input_data, const Dims<4>& input_dims,
       }
     }
   }
+}
+
+template <typename T>
+inline void SpaceToBatchND(const T* input_data, const Dims<4>& input_dims,
+                           const int32* block_shape_data,
+                           const Dims<4>& block_shape_dims,
+                           const int32* paddings_data,
+                           const Dims<4>& paddings_dims, T* output_data,
+                           const Dims<4>& output_dims) {
+  SpaceToBatchND(input_data, input_dims, block_shape_data, block_shape_dims,
+                 paddings_data, paddings_dims, output_data, output_dims, 0);
 }
 
 template <typename T>
