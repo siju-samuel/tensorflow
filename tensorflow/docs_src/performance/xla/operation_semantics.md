@@ -22,7 +22,7 @@ Alltoall is a collective operation that sends data from all cores to all cores.
 It has two phases:
 
 1.  the scatter phase. On each core, the operand is split into `split_count`
-    number of blocks along the `split_dimensions`, and the blocks are scatterd
+    number of blocks along the `split_dimensions`, and the blocks are scattered
     to all cores, e.g., the ith block is send to the ith core.
 2.  the gather phase. Each core concatenates the received blocks along the
     `concat_dimension`.
@@ -2385,8 +2385,6 @@ restrictions listed below.
     last execution of the `body`.
 *   The shape of the type `T` is statically determined and must be the same
     across all iterations.
-*   `While` nodes are not allowed to be nested. (This restriction may be lifted
-    in the future on some targets.)
 
 The T parameters of the computations are initialized with the `init` value in
 the first iteration and are automatically updated to the new result from `body`
