@@ -22,6 +22,7 @@ limitations under the License.
 #include <utility>
 
 #include "absl/algorithm/container.h"
+#include "absl/container/inlined_vector.h"
 #include "absl/memory/memory.h"
 #include "tensorflow/compiler/xla/layout_util.h"
 #include "tensorflow/compiler/xla/literal.h"
@@ -295,7 +296,7 @@ StatusOr<std::unique_ptr<HloInstruction>> HloInstruction::CreateFromProto(
       TF_RET_CHECK(proto.called_computation_ids_size() == 1)
           << "CrossReplicaSum should have 1 called computation but sees "
           << proto.called_computation_ids_size();
-      tensorflow::gtl::optional<int64> all_reduce_id;
+      absl::optional<int64> all_reduce_id;
       if (proto.all_reduce_id() > 0) {
         all_reduce_id = proto.all_reduce_id();
       }
@@ -361,11 +362,6 @@ StatusOr<std::unique_ptr<HloInstruction>> HloInstruction::CreateFromProto(
             ->set_convolution_dimension_numbers(
                 proto.convolution_dimension_numbers());
       }
-      break;
-    case HloOpcode::kHostCompute:
-      instruction =
-          CreateHostCompute(proto.shape(), all_operands(), proto.channel_name(),
-                            proto.cost_estimate_ns());
       break;
     case HloOpcode::kPad:
       TF_RET_CHECK(proto.operand_ids_size() == 2)
@@ -670,7 +666,7 @@ HloInstruction::CreateCrossReplicaSum(
     HloComputation* reduce_computation,
     tensorflow::gtl::ArraySlice<int64> replica_group_ids,
     tensorflow::StringPiece barrier,
-    const tensorflow::gtl::optional<int64>& all_reduce_id) {
+    const absl::optional<int64>& all_reduce_id) {
   return absl::make_unique<HloAllReduceInstruction>(
       shape, operands, reduce_computation, replica_group_ids, barrier,
       all_reduce_id);
@@ -1035,7 +1031,6 @@ bool HloInstruction::HasSideEffectNoRecurse() const {
     case HloOpcode::kInfeed:
     case HloOpcode::kOutfeed:
     case HloOpcode::kTrace:
-    case HloOpcode::kHostCompute:
       return true;
     case HloOpcode::kCrossReplicaSum:
       return all_reduce_id().has_value();
@@ -1074,13 +1069,6 @@ bool HloInstruction::HasSideEffect() const {
     tensorflow::StringPiece custom_call_target) {
   return absl::make_unique<HloCustomCallInstruction>(shape, operands,
                                                      custom_call_target);
-}
-
-/* static */ std::unique_ptr<HloInstruction> HloInstruction::CreateHostCompute(
-    const Shape& shape, tensorflow::gtl::ArraySlice<HloInstruction*> operands,
-    tensorflow::StringPiece channel_name, const int64 cost_estimate_ns) {
-  return absl::make_unique<HloHostComputeInstruction>(
-      shape, operands, channel_name, cost_estimate_ns);
 }
 
 /* static */ std::unique_ptr<HloInstruction> HloInstruction::CreateTuple(
@@ -1170,7 +1158,6 @@ std::unique_ptr<HloInstruction> HloInstruction::CloneWithNewOperands(
     case HloOpcode::kCustomCall:
     case HloOpcode::kReduceWindow:
     case HloOpcode::kSelectAndScatter:
-    case HloOpcode::kHostCompute:
     case HloOpcode::kPad:
     case HloOpcode::kDynamicSlice:
     case HloOpcode::kSort:
@@ -1636,7 +1623,6 @@ bool HloInstruction::IdenticalSlowPath(
     case HloOpcode::kCustomCall:
     case HloOpcode::kReduceWindow:
     case HloOpcode::kSelectAndScatter:
-    case HloOpcode::kHostCompute:
     case HloOpcode::kPad:
     case HloOpcode::kDynamicSlice:
     case HloOpcode::kGather:
@@ -1850,7 +1836,7 @@ string HloInstruction::ToString(const HloPrintOptions& options) const {
 }
 
 bool HloInstruction::IsElementwiseImpl(
-    const tensorflow::gtl::optional<int64>& operand_idx) const {
+    const absl::optional<int64>& operand_idx) const {
   switch (opcode_) {
     // Unary elementwise operations.
     case HloOpcode::kAbs:
@@ -2347,8 +2333,6 @@ Status HloInstruction::Visit(DfsHloVisitorBase<HloInstructionPtr>* visitor) {
       return visitor->HandleInfeed(this);
     case HloOpcode::kOutfeed:
       return visitor->HandleOutfeed(this);
-    case HloOpcode::kHostCompute:
-      return visitor->HandleHostCompute(this);
     case HloOpcode::kRng:
       return visitor->HandleRng(this);
     case HloOpcode::kWhile:
@@ -2394,8 +2378,7 @@ Status HloInstruction::Visit(DfsHloVisitorBase<HloInstructionPtr>* visitor) {
 template Status HloInstruction::Visit(DfsHloVisitor* visitor);
 template Status HloInstruction::Visit(ConstDfsHloVisitor* visitor);
 
-using DFSStack =
-    tensorflow::gtl::InlinedVector<std::pair<int, HloInstruction*>, 16>;
+using DFSStack = absl::InlinedVector<std::pair<int, HloInstruction*>, 16>;
 
 // Push "child" onto the dfs_stack if not already visited.  Returns false if a
 // cycle was detected, and true otherwise.
@@ -2640,7 +2623,7 @@ bool HloInstruction::IsElementwiseBinary() const {
 }
 
 bool HloInstruction::IsElementwise() const {
-  return IsElementwiseImpl(tensorflow::gtl::nullopt);
+  return IsElementwiseImpl(absl::nullopt);
 }
 
 bool HloInstruction::ImplicitlyBroadcastsOperand(int64 operand_idx) const {
@@ -3173,7 +3156,7 @@ void HloInstruction::set_cross_replica_sum_barrier(const string& barrier) {
       barrier);
 }
 
-tensorflow::gtl::optional<int64> HloInstruction::all_reduce_id() const {
+absl::optional<int64> HloInstruction::all_reduce_id() const {
   return Cast<HloAllReduceInstruction>(this)->all_reduce_id();
 }
 
@@ -3221,10 +3204,6 @@ void HloInstruction::set_scatter(HloComputation* computation) {
 
 const string& HloInstruction::custom_call_target() const {
   return Cast<HloCustomCallInstruction>(this)->custom_call_target();
-}
-
-const string& HloInstruction::channel_name() const {
-  return Cast<HloHostComputeInstruction>(this)->channel_name();
 }
 
 const PaddingConfig& HloInstruction::padding_config() const {

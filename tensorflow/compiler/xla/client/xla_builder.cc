@@ -196,7 +196,6 @@ void XlaBuilder::IsConstantVisitor(const int64 op_handle,
       // TODO(b/33009255): Implmement constant folding for cross replica sum.
     case HloOpcode::kInfeed:
     case HloOpcode::kOutfeed:
-    case HloOpcode::kHostCompute:
     case HloOpcode::kCall:
       // TODO(b/32495713): We aren't checking the to_apply computation itself,
       // so we conservatively say that computations containing the Call op
@@ -1278,18 +1277,6 @@ XlaOp XlaBuilder::CustomCall(const string& call_target_name,
   });
 }
 
-XlaOp XlaBuilder::HostCompute(tensorflow::gtl::ArraySlice<XlaOp> operands,
-                              const string& channel_name,
-                              int64 cost_estimate_ns, const Shape& shape) {
-  return ReportErrorOrReturn([&]() -> StatusOr<XlaOp> {
-    HloInstructionProto instr;
-    *instr.mutable_shape() = shape;
-    instr.set_channel_name(channel_name);
-    instr.set_cost_estimate_ns(cost_estimate_ns);
-    return AddInstruction(std::move(instr), HloOpcode::kHostCompute, operands);
-  });
-}
-
 XlaOp XlaBuilder::Complex(
     const XlaOp& real, const XlaOp& imag,
     tensorflow::gtl::ArraySlice<int64> broadcast_dimensions) {
@@ -1464,7 +1451,7 @@ XlaOp XlaBuilder::Rev(const XlaOp& operand,
   });
 }
 
-XlaOp XlaBuilder::Sort(XlaOp keys, tensorflow::gtl::optional<XlaOp> values,
+XlaOp XlaBuilder::Sort(XlaOp keys, absl::optional<XlaOp> values,
                        int64 dimension) {
   return ReportErrorOrReturn([&]() -> StatusOr<XlaOp> {
     HloInstructionProto instr;
@@ -1885,14 +1872,14 @@ XlaOp XlaBuilder::CrossReplicaSum(
            b->Parameter(/*parameter_number=*/1, scalar_shape, "y"));
     TF_ASSIGN_OR_RETURN(auto computation, b->Build());
     return CrossReplicaSum(operand, computation, replica_group_ids,
-                           /*channel_id=*/tensorflow::gtl::nullopt);
+                           /*channel_id=*/absl::nullopt);
   });
 }
 
 XlaOp XlaBuilder::CrossReplicaSum(
     const XlaOp& operand, const XlaComputation& computation,
     tensorflow::gtl::ArraySlice<int64> replica_group_ids,
-    const tensorflow::gtl::optional<ChannelHandle>& channel_id) {
+    const absl::optional<ChannelHandle>& channel_id) {
   return ReportErrorOrReturn([&]() -> StatusOr<XlaOp> {
     HloInstructionProto instr;
     TF_ASSIGN_OR_RETURN(const Shape& operand_shape, GetShape(operand));
@@ -2643,13 +2630,6 @@ XlaOp CustomCall(XlaBuilder* builder, const string& call_target_name,
   return builder->CustomCall(call_target_name, operands, shape);
 }
 
-XlaOp HostCompute(XlaBuilder* builder,
-                  tensorflow::gtl::ArraySlice<XlaOp> operands,
-                  const string& channel_name, int64 cost_estimate_ns,
-                  const Shape& shape) {
-  return builder->HostCompute(operands, channel_name, cost_estimate_ns, shape);
-}
-
 XlaOp Complex(const XlaOp& real, const XlaOp& imag,
               tensorflow::gtl::ArraySlice<int64> broadcast_dimensions) {
   return real.builder()->Complex(real, imag, broadcast_dimensions);
@@ -2764,10 +2744,9 @@ XlaOp CrossReplicaSum(const XlaOp& operand,
   return operand.builder()->CrossReplicaSum(operand, replica_group_ids);
 }
 
-XlaOp CrossReplicaSum(
-    const XlaOp& operand, const XlaComputation& computation,
-    tensorflow::gtl::ArraySlice<int64> replica_group_ids,
-    const tensorflow::gtl::optional<ChannelHandle>& channel_id) {
+XlaOp CrossReplicaSum(const XlaOp& operand, const XlaComputation& computation,
+                      tensorflow::gtl::ArraySlice<int64> replica_group_ids,
+                      const absl::optional<ChannelHandle>& channel_id) {
   return operand.builder()->CrossReplicaSum(operand, computation,
                                             replica_group_ids, channel_id);
 }
@@ -2864,8 +2843,7 @@ XlaOp Rev(const XlaOp& operand, tensorflow::gtl::ArraySlice<int64> dimensions) {
   return operand.builder()->Rev(operand, dimensions);
 }
 
-XlaOp Sort(XlaOp keys, tensorflow::gtl::optional<XlaOp> values,
-           int64 dimension) {
+XlaOp Sort(XlaOp keys, absl::optional<XlaOp> values, int64 dimension) {
   return keys.builder()->Sort(keys, std::move(values), dimension);
 }
 
