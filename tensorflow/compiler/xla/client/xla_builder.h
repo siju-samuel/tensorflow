@@ -501,17 +501,21 @@ class XlaBuilder {
            tensorflow::gtl::ArraySlice<int64> broadcast_dimensions = {});
 
   // Enqueues a dot instruction onto the computation.
-  XlaOp Dot(const XlaOp& lhs, const XlaOp& rhs);
+  XlaOp Dot(const XlaOp& lhs, const XlaOp& rhs,
+            const PrecisionConfigProto* precision_config_proto = nullptr);
 
   // Enqueues a general dot instruction onto the computation.
-  XlaOp DotGeneral(const XlaOp& lhs, const XlaOp& rhs,
-                   const DotDimensionNumbers& dimension_numbers);
+  XlaOp DotGeneral(
+      const XlaOp& lhs, const XlaOp& rhs,
+      const DotDimensionNumbers& dimension_numbers,
+      const PrecisionConfigProto* precision_config_proto = nullptr);
 
   // Enqueues a convolution instruction onto the computation, which uses the
   // default convolution dimension numbers.
   XlaOp Conv(const XlaOp& lhs, const XlaOp& rhs,
              tensorflow::gtl::ArraySlice<int64> window_strides, Padding padding,
-             int64 feature_group_count = 1);
+             int64 feature_group_count = 1,
+             const PrecisionConfigProto* precision_config_proto = nullptr);
 
   // Enqueues a convolution instruction onto the computation, with the caller
   // provided padding configuration in the format returned by MakePadding().
@@ -519,7 +523,8 @@ class XlaBuilder {
       const XlaOp& lhs, const XlaOp& rhs,
       tensorflow::gtl::ArraySlice<int64> window_strides,
       tensorflow::gtl::ArraySlice<std::pair<int64, int64>> padding,
-      int64 feature_group_count = 1);
+      int64 feature_group_count = 1,
+      const PrecisionConfigProto* precision_config_proto = nullptr);
 
   // Enqueues a convolution instruction onto the computation, with the caller
   // provided dimension numbers configuration.
@@ -527,7 +532,8 @@ class XlaBuilder {
       const XlaOp& lhs, const XlaOp& rhs,
       tensorflow::gtl::ArraySlice<int64> window_strides, Padding padding,
       const ConvolutionDimensionNumbers& dimension_numbers,
-      int64 feature_group_count = 1);
+      int64 feature_group_count = 1,
+      const PrecisionConfigProto* precision_config_proto = nullptr);
 
   // Enqueues a convolution instruction onto the computation, with the caller
   // provided padding configuration as well as the dimension numbers.
@@ -536,7 +542,8 @@ class XlaBuilder {
       tensorflow::gtl::ArraySlice<int64> window_strides,
       tensorflow::gtl::ArraySlice<std::pair<int64, int64>> padding,
       const ConvolutionDimensionNumbers& dimension_numbers,
-      int64 feature_group_count = 1);
+      int64 feature_group_count = 1,
+      const PrecisionConfigProto* precision_config_proto = nullptr);
 
   // Enqueues a convolution instruction onto the computation, with the caller
   // provided padding configuration, dilation factors and dimension numbers.
@@ -547,7 +554,8 @@ class XlaBuilder {
       tensorflow::gtl::ArraySlice<int64> lhs_dilation,
       tensorflow::gtl::ArraySlice<int64> rhs_dilation,
       const ConvolutionDimensionNumbers& dimension_numbers,
-      int64 feature_group_count = 1);
+      int64 feature_group_count = 1,
+      const PrecisionConfigProto* precision_config_proto = nullptr);
 
   // Enqueues an FFT instruction onto the computation, of the given type and
   // with the given FFT length.
@@ -677,7 +685,7 @@ class XlaBuilder {
   // sum for each subgroup.
   XlaOp CrossReplicaSum(
       const XlaOp& operand,
-      tensorflow::gtl::ArraySlice<int64> replica_group_ids = {});
+      tensorflow::gtl::ArraySlice<ReplicaGroup> replica_groups = {});
 
   // Enqueues an operation that do an AllReduce of the operand cross cores. Here
   // AllReduce means doing a reduction on the input operand cross cores and then
@@ -686,10 +694,11 @@ class XlaBuilder {
   // scalars, e.g., add, min, or max. The way that AllReduce is applied is
   // configured by:
   //
-  // - `replica_group_ids`: maps replica ids to subgroup ids. If empty, all
-  // replicas belong to one group. Allreduce will be applied within subgroups.
-  // For example, we have 4 replicas, then replica_group_ids={0,1,0,1} means,
-  // replica 0 and 2 are in subgroup 0, replica 1 and 3 are in subgroup 1.
+  // - `replica_groups`: each ReplicaGroup contains a list of replica id. If
+  // empty, all replicas belong to one group. Allreduce will be applied within
+  // subgroups. For example, we have 4 replicas, then
+  // replica_groups={{0,2},{1,3}} means, replica 0 and 2 are in subgroup 0,
+  // replica 1 and 3 are in subgroup 1.
   //
   // - `channel_id`: for Allreduce nodes from different modules, if they have
   // the same channel_id, they will be 'Allreduce'd. If empty, Allreduce will
@@ -698,7 +707,7 @@ class XlaBuilder {
   // TODO(b/79737069): Rename this to AllReduce when it's ready to use.
   XlaOp CrossReplicaSum(
       const XlaOp& operand, const XlaComputation& computation,
-      tensorflow::gtl::ArraySlice<int64> replica_group_ids = {},
+      tensorflow::gtl::ArraySlice<ReplicaGroup> replica_groups = {},
       const absl::optional<ChannelHandle>& channel_id = absl::nullopt);
 
   // Enqueues an operation that do an Alltoall of the operand cross cores.
@@ -1146,28 +1155,34 @@ class XlaBuilder {
                   tensorflow::gtl::ArraySlice<int64> broadcast_dimensions);
   friend XlaOp Le(const XlaOp& lhs, const XlaOp& rhs,
                   tensorflow::gtl::ArraySlice<int64> broadcast_dimensions);
-  friend XlaOp Dot(const XlaOp& lhs, const XlaOp& rhs);
+  friend XlaOp Dot(const XlaOp& lhs, const XlaOp& rhs,
+                   const PrecisionConfigProto* precision_config_proto);
   friend XlaOp DotGeneral(const XlaOp& lhs, const XlaOp& rhs,
-                          const DotDimensionNumbers& dimension_numbers);
+                          const DotDimensionNumbers& dimension_number,
+                          const PrecisionConfigProto* precision_config_proto);
   friend XlaOp Conv(const XlaOp& lhs, const XlaOp& rhs,
                     tensorflow::gtl::ArraySlice<int64> window_strides,
-                    Padding padding, int64 feature_group_count);
+                    Padding padding, int64 feature_group_count,
+                    const PrecisionConfigProto* precision_config_proto);
   friend XlaOp ConvWithGeneralPadding(
       const XlaOp& lhs, const XlaOp& rhs,
       tensorflow::gtl::ArraySlice<int64> window_strides,
       tensorflow::gtl::ArraySlice<std::pair<int64, int64>> padding,
-      int64 feature_group_count);
+      int64 feature_group_count,
+      const PrecisionConfigProto* precision_config_proto);
   friend XlaOp ConvWithGeneralDimensions(
       const XlaOp& lhs, const XlaOp& rhs,
       tensorflow::gtl::ArraySlice<int64> window_strides, Padding padding,
       const ConvolutionDimensionNumbers& dimension_numbers,
-      int64 feature_group_count);
+      int64 feature_group_count,
+      const PrecisionConfigProto* precision_config_proto);
   friend XlaOp ConvGeneral(
       const XlaOp& lhs, const XlaOp& rhs,
       tensorflow::gtl::ArraySlice<int64> window_strides,
       tensorflow::gtl::ArraySlice<std::pair<int64, int64>> padding,
       const ConvolutionDimensionNumbers& dimension_numbers,
-      int64 feature_group_count);
+      int64 feature_group_count,
+      const PrecisionConfigProto* precision_config_proto);
   friend XlaOp ConvGeneralDilated(
       const XlaOp& lhs, const XlaOp& rhs,
       tensorflow::gtl::ArraySlice<int64> window_strides,
@@ -1175,7 +1190,8 @@ class XlaBuilder {
       tensorflow::gtl::ArraySlice<int64> lhs_dilation,
       tensorflow::gtl::ArraySlice<int64> rhs_dilation,
       const ConvolutionDimensionNumbers& dimension_numbers,
-      int64 feature_group_count);
+      int64 feature_group_count,
+      const PrecisionConfigProto* precision_config_proto);
   friend XlaOp Fft(const XlaOp& operand, FftType fft_type,
                    tensorflow::gtl::ArraySlice<int64> fft_length);
   friend XlaOp Infeed(XlaBuilder* builder, const Shape& shape,
@@ -1238,10 +1254,10 @@ class XlaBuilder {
       tensorflow::gtl::ArraySlice<std::pair<int64, int64>> padding);
   friend XlaOp CrossReplicaSum(
       const XlaOp& operand,
-      tensorflow::gtl::ArraySlice<int64> replica_group_ids);
+      tensorflow::gtl::ArraySlice<ReplicaGroup> replica_groups);
   friend XlaOp CrossReplicaSum(
       const XlaOp& operand, const XlaComputation& computation,
-      tensorflow::gtl::ArraySlice<int64> replica_group_ids,
+      tensorflow::gtl::ArraySlice<ReplicaGroup> replica_groups,
       const absl::optional<ChannelHandle>& channel_id);
   friend XlaOp AllToAll(const XlaOp& operand, int64 split_dimension,
                         int64 concat_dimension, int64 split_count,
@@ -1626,17 +1642,20 @@ XlaOp Le(const XlaOp& lhs, const XlaOp& rhs,
          tensorflow::gtl::ArraySlice<int64> broadcast_dimensions = {});
 
 // Enqueues a dot instruction onto the computation.
-XlaOp Dot(const XlaOp& lhs, const XlaOp& rhs);
+XlaOp Dot(const XlaOp& lhs, const XlaOp& rhs,
+          const PrecisionConfigProto* precision_config_proto = nullptr);
 
 // Enqueues a general dot instruction onto the computation.
 XlaOp DotGeneral(const XlaOp& lhs, const XlaOp& rhs,
-                 const DotDimensionNumbers& dimension_numbers);
+                 const DotDimensionNumbers& dimension_numbers,
+                 const PrecisionConfigProto* precision_config_proto = nullptr);
 
 // Enqueues a convolution instruction onto the computation, which uses the
 // default convolution dimension numbers.
 XlaOp Conv(const XlaOp& lhs, const XlaOp& rhs,
            tensorflow::gtl::ArraySlice<int64> window_strides, Padding padding,
-           int64 feature_group_count = 1);
+           int64 feature_group_count = 1,
+           const PrecisionConfigProto* precision_config_proto = nullptr);
 
 // Enqueues a convolution instruction onto the computation, with the caller
 // provided padding configuration in the format returned by MakePadding().
@@ -1644,7 +1663,8 @@ XlaOp ConvWithGeneralPadding(
     const XlaOp& lhs, const XlaOp& rhs,
     tensorflow::gtl::ArraySlice<int64> window_strides,
     tensorflow::gtl::ArraySlice<std::pair<int64, int64>> padding,
-    int64 feature_group_count = 1);
+    int64 feature_group_count = 1,
+    const PrecisionConfigProto* precision_config_proto = nullptr);
 
 // Enqueues a convolution instruction onto the computation, with the caller
 // provided dimension numbers configuration.
@@ -1652,7 +1672,8 @@ XlaOp ConvWithGeneralDimensions(
     const XlaOp& lhs, const XlaOp& rhs,
     tensorflow::gtl::ArraySlice<int64> window_strides, Padding padding,
     const ConvolutionDimensionNumbers& dimension_numbers,
-    int64 feature_group_count = 1);
+    int64 feature_group_count = 1,
+    const PrecisionConfigProto* precision_config_proto = nullptr);
 
 // Enqueues a convolution instruction onto the computation, with the caller
 // provided padding configuration as well as the dimension numbers.
@@ -1660,7 +1681,8 @@ XlaOp ConvGeneral(const XlaOp& lhs, const XlaOp& rhs,
                   tensorflow::gtl::ArraySlice<int64> window_strides,
                   tensorflow::gtl::ArraySlice<std::pair<int64, int64>> padding,
                   const ConvolutionDimensionNumbers& dimension_numbers,
-                  int64 feature_group_count = 1);
+                  int64 feature_group_count = 1,
+                  const PrecisionConfigProto* precision_config_proto = nullptr);
 
 // Enqueues a convolution instruction onto the computation, with the caller
 // provided padding configuration, dilation factors and dimension numbers.
@@ -1671,7 +1693,8 @@ XlaOp ConvGeneralDilated(
     tensorflow::gtl::ArraySlice<int64> lhs_dilation,
     tensorflow::gtl::ArraySlice<int64> rhs_dilation,
     const ConvolutionDimensionNumbers& dimension_numbers,
-    int64 feature_group_count = 1);
+    int64 feature_group_count = 1,
+    const PrecisionConfigProto* precision_config_proto = nullptr);
 
 // Enqueues an FFT instruction onto the computation, of the given type and
 // with the given FFT length.
@@ -1811,7 +1834,7 @@ XlaOp ReduceWindowWithGeneralPadding(
 // sum for each subgroup.
 XlaOp CrossReplicaSum(
     const XlaOp& operand,
-    tensorflow::gtl::ArraySlice<int64> replica_group_ids = {});
+    tensorflow::gtl::ArraySlice<ReplicaGroup> replica_groups = {});
 
 // Enqueues an operation that do an AllReduce of the operand cross cores. Here
 // AllReduce means doing a reduction on the input operand cross cores and then
@@ -1820,10 +1843,10 @@ XlaOp CrossReplicaSum(
 // scalars, e.g., add, min, or max. The way that AllReduce is applied is
 // configured by:
 //
-// - `replica_group_ids`: maps replica ids to subgroup ids. If empty, all
-// replicas belong to one group. Allreduce will be applied within subgroups.
-// For example, we have 4 replicas, then replica_group_ids={0,1,0,1} means,
-// replica 0 and 2 are in subgroup 0, replica 1 and 3 are in subgroup 1.
+// - `replica_groups`: each ReplicaGroup contains a list of replica id. If
+// empty, all replicas belong to one group. Allreduce will be applied within
+// subgroups. For example, we have 4 replicas, then replica_groups={{0,2},{1,3}}
+// means, replica 0 and 2 are in subgroup 0, replica 1 and 3 are in subgroup 1.
 //
 // - `channel_id`: for Allreduce nodes from different modules, if they have the
 // same channel_id, they will be 'Allreduce'd. If empty, Allreduce will not be
@@ -1832,7 +1855,7 @@ XlaOp CrossReplicaSum(
 // TODO(b/79737069): Rename this to AllReduce when it's ready to use.
 XlaOp CrossReplicaSum(
     const XlaOp& operand, const XlaComputation& computation,
-    tensorflow::gtl::ArraySlice<int64> replica_group_ids = {},
+    tensorflow::gtl::ArraySlice<ReplicaGroup> replica_groups = {},
     const absl::optional<ChannelHandle>& channel_id = absl::nullopt);
 
 // Enqueues an operation that do an Alltoall of the operand cross cores.

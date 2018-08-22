@@ -102,6 +102,7 @@ class HloPrintOptions {
     return HloPrintOptions()
         .set_print_subcomputation_mode(PrintSubcomputationMode::kFullBodies)
         .set_print_metadata(false)
+        .set_print_backend_config(false)
         .set_compact_operands(true)
         .set_print_operand_shape(true)
         .set_print_program_shape(false)
@@ -183,7 +184,7 @@ class HloPrintOptions {
     return print_subcomputation_mode_;
   }
   bool print_metadata() const { return print_metadata_; }
-  bool print_backend_config() const { return print_metadata_; }
+  bool print_backend_config() const { return print_backend_config_; }
   bool compact_operands() const { return compact_operands_; }
   bool print_operand_shape() const { return print_operand_shape_; }
   bool print_program_shape() const { return print_program_shape_; }
@@ -434,9 +435,10 @@ class HloInstruction {
   //
   // `reduction_computation`: the reduction function.
   //
-  // `replica_group_ids`: maps replica ids to subgroup ids. If empty, all
-  // replicas belong to one group. Allreduce will be applied within subgroups.
-  // For example, we have 4 replicas, then replica_group_ids={0,1,0,1} means,
+  // `replica_groups`: each ReplicaGroup contains a list of replica id. If
+  // empty, all replicas belong to one group in the order of 0 - (n-1).
+  // Allreduce will be applied within subgroups.
+  // For example, we have 4 replicas, then replica_groups={{0,2},{1,3}} means,
   // replica 0 and 2 are in subgroup 0, replica 1 and 3 are in subgroup 1.
   //
   // `all_reduce_id`: for Allreduce nodes from different modules, if they have
@@ -447,7 +449,7 @@ class HloInstruction {
   static std::unique_ptr<HloInstruction> CreateCrossReplicaSum(
       const Shape& shape, tensorflow::gtl::ArraySlice<HloInstruction*> operands,
       HloComputation* reduce_computation,
-      tensorflow::gtl::ArraySlice<int64> replica_group_ids,
+      const std::vector<ReplicaGroup>& replica_groups,
       tensorflow::StringPiece barrier,
       const absl::optional<int64>& all_reduce_id);
 
@@ -858,6 +860,11 @@ class HloInstruction {
       return false;
     }
 
+    if (!ContainersEqual(precision_config_.operand_precision(),
+                         other.precision_config_.operand_precision())) {
+      return false;
+    }
+
     return IdenticalSlowPath(other, eq_computations);
   }
 
@@ -1105,6 +1112,9 @@ class HloInstruction {
   // Returns the dump string of the dot dimension numbers.
   string DotDimensionNumbersToString() const;
 
+  // Returns the dump string of the precision configuration.
+  string PrecisionConfigToString() const;
+
   // Clones the HLO instruction. The clone will have the same opcode, shape, and
   // operands. After creation the clone has no uses. "this" (the instruction
   // cloned from) is not changed. Suffix is the string to append to the name of
@@ -1247,6 +1257,20 @@ class HloInstruction {
   //
   static StatusOr<string> BackendConfigToRawString(
       const tensorflow::protobuf::Message& proto);
+
+  // Returns the information used to tell the implementation information about
+  // what sort of precision is requested. The meaning of the field is backend
+  // specific. At the moment, it is only supported for kConvolution and kDot.
+  // Transformations on one kDot or kConvolution to another will preserve this
+  // information. Transformations to other HLOs will not preserve this
+  // information but it is presumed that the alternate lowering is strictly
+  // superior.
+  const PrecisionConfigProto& precision_config() const {
+    return precision_config_;
+  }
+  void set_precision_config(const PrecisionConfigProto& precision_config) {
+    precision_config_ = precision_config;
+  }
 
   // Sets the debug metadata for this instruction.
   void set_metadata(const OpMetadata& metadata) { metadata_ = metadata; }
@@ -1415,9 +1439,6 @@ class HloInstruction {
 
   // Returns the shape for the Outfeed instruction.
   const Shape& outfeed_shape() const;
-
-  // Delegates to HloAllReduceInstruction::replica_group_ids.
-  const std::vector<int64>& replica_group_ids() const;
 
   // Delegates to HloAllToAllInstruction::replica_groups.
   const std::vector<ReplicaGroup>& replica_groups() const;
@@ -1653,6 +1674,10 @@ class HloInstruction {
   // HLO. See the documentation on backend_config().
   string backend_config_;
 
+  // Information used to communicate to the implementation about the algorithm
+  // used to produce results. See the documentation on precision_config().
+  PrecisionConfigProto precision_config_;
+
   // String identifier for instruction.
   string name_;
 
@@ -1675,10 +1700,12 @@ StatusOr<HloInstruction::FusionKind> StringToFusionKind(
 string PaddingConfigToString(const PaddingConfig& padding);
 string OpMetadataToString(const OpMetadata& metadata);
 string RandomDistributionToString(const RandomDistribution& distribution);
+string PrecisionToString(const PrecisionConfigProto::Precision& precision);
 string ConvolutionDimensionNumbersToString(
     const ConvolutionDimensionNumbers& dnums);
 
 StatusOr<RandomDistribution> StringToRandomDistribution(const string& name);
+StatusOr<PrecisionConfigProto::Precision> StringToPrecision(const string& name);
 
 std::ostream& operator<<(std::ostream& os, HloInstruction::FusionKind kind);
 

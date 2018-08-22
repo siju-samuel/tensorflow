@@ -302,9 +302,9 @@ StatusOr<std::unique_ptr<HloInstruction>> HloInstruction::CreateFromProto(
       }
       instruction = CreateCrossReplicaSum(
           proto.shape(), all_operands(), computations(0),
-          /*replica_group_ids=*/
-          std::vector<int64>(proto.replica_group_ids().begin(),
-                             proto.replica_group_ids().end()),
+          /*replica_groups=*/
+          std::vector<ReplicaGroup>(proto.replica_groups().begin(),
+                                    proto.replica_groups().end()),
           /*barrier=*/proto.cross_replica_sum_barrier(),
           /*all_reduce_id=*/all_reduce_id);
       break;
@@ -444,6 +444,7 @@ StatusOr<std::unique_ptr<HloInstruction>> HloInstruction::CreateFromProto(
   instruction->SetAndSanitizeName(proto.name());
   instruction->metadata_ = proto.metadata();
   instruction->backend_config_ = proto.backend_config();
+  instruction->precision_config_ = proto.precision_config();
 
   if (proto.has_dot_dimension_numbers()) {
     instruction->dot_dimension_numbers_ =
@@ -664,11 +665,11 @@ HloInstruction::CreateReducePrecision(const Shape& shape,
 HloInstruction::CreateCrossReplicaSum(
     const Shape& shape, tensorflow::gtl::ArraySlice<HloInstruction*> operands,
     HloComputation* reduce_computation,
-    tensorflow::gtl::ArraySlice<int64> replica_group_ids,
+    const std::vector<ReplicaGroup>& replica_groups,
     tensorflow::StringPiece barrier,
     const absl::optional<int64>& all_reduce_id) {
   return absl::make_unique<HloAllReduceInstruction>(
-      shape, operands, reduce_computation, replica_group_ids, barrier,
+      shape, operands, reduce_computation, replica_groups, barrier,
       all_reduce_id);
 }
 
@@ -1019,6 +1020,7 @@ void HloInstruction::SetupDerivedInstruction(
     derived_instruction->clear_sharding();
   }
   derived_instruction->set_metadata(metadata_);
+  derived_instruction->set_precision_config(precision_config_);
 }
 
 bool HloInstruction::HasSideEffectNoRecurse() const {
@@ -1279,6 +1281,7 @@ std::unique_ptr<HloInstruction> HloInstruction::CloneWithNewOperands(
       }
       break;
   }
+  // SetupDerivedInstruction will setup the precision_config_ field.
   SetupDerivedInstruction(clone.get());
   clone->set_parent(parent_);
   clone->set_raw_backend_config_string(backend_config_);
@@ -2000,6 +2003,11 @@ std::vector<string> HloInstruction::ExtraAttributesToString(
     extra.push_back(DotDimensionNumbersToString());
   }
 
+  string precision_config_string = PrecisionConfigToString();
+  if (!precision_config_string.empty()) {
+    extra.push_back(precision_config_string);
+  }
+
   if (options.print_subcomputation_mode() ==
       HloPrintOptions::PrintSubcomputationMode::kNameOnly) {
     if (opcode() == HloOpcode::kWhile) {
@@ -2121,6 +2129,7 @@ HloInstructionProto HloInstruction::ToProto() const {
 
   *proto.mutable_metadata() = metadata_;
   proto.set_backend_config(backend_config_);
+  *proto.mutable_precision_config() = precision_config_;
   if (opcode() != HloOpcode::kFusion) {
     for (const HloComputation* computation : called_computations_) {
       proto.add_called_computation_ids(computation->unique_id());
@@ -2819,6 +2828,11 @@ string RandomDistributionToString(const RandomDistribution& distribution) {
   return tensorflow::str_util::Lowercase(RandomDistribution_Name(distribution));
 }
 
+string PrecisionToString(const PrecisionConfigProto::Precision& precision) {
+  return tensorflow::str_util::Lowercase(
+      PrecisionConfigProto::Precision_Name(precision));
+}
+
 string ConvolutionDimensionNumbersToString(
     const ConvolutionDimensionNumbers& dnums) {
   // lhs_dims[i] is the symbol of the logical dimension i for the lhs
@@ -2878,6 +2892,44 @@ StatusOr<RandomDistribution> StringToRandomDistribution(const string& name) {
       if (RandomDistribution_IsValid(i)) {
         auto value = static_cast<RandomDistribution>(i);
         (*map)[RandomDistributionToString(value)] = value;
+      }
+    }
+    return map;
+  }();
+  auto found = map->find(tensorflow::str_util::Lowercase(name));
+  if (found == map->end()) {
+    return InvalidArgument("Unknown distribution");
+  }
+  return found->second;
+}
+
+string HloInstruction::PrecisionConfigToString() const {
+  if (precision_config_.operand_precision().empty()) {
+    return "";
+  }
+  return StrCat(
+      "operand_precision={",
+      Join(precision_config_.operand_precision(), ",",
+           [](string* out, int32 precision) {
+             CHECK(PrecisionConfigProto::Precision_IsValid(precision))
+                 << precision;
+             StrAppend(
+                 out,
+                 PrecisionToString(
+                     static_cast<PrecisionConfigProto::Precision>(precision)));
+           }),
+      "}");
+}
+
+StatusOr<PrecisionConfigProto::Precision> StringToPrecision(
+    const string& name) {
+  static std::unordered_map<string, PrecisionConfigProto::Precision>* map = [] {
+    static auto* map =
+        new std::unordered_map<string, PrecisionConfigProto::Precision>;
+    for (int i = 0; i < PrecisionConfigProto::Precision_ARRAYSIZE; i++) {
+      if (PrecisionConfigProto::Precision_IsValid(i)) {
+        auto value = static_cast<PrecisionConfigProto::Precision>(i);
+        (*map)[PrecisionToString(value)] = value;
       }
     }
     return map;
@@ -3132,11 +3184,10 @@ const string& HloInstruction::outfeed_config() const {
   return Cast<HloOutfeedInstruction>(this)->outfeed_config();
 }
 
-const std::vector<int64>& HloInstruction::replica_group_ids() const {
-  return Cast<HloAllReduceInstruction>(this)->replica_group_ids();
-}
-
 const std::vector<ReplicaGroup>& HloInstruction::replica_groups() const {
+  if (opcode() == HloOpcode::kCrossReplicaSum) {
+    return Cast<HloAllReduceInstruction>(this)->replica_groups();
+  }
   return Cast<HloAllToAllInstruction>(this)->replica_groups();
 }
 
