@@ -314,8 +314,7 @@ StatusOr<std::unique_ptr<HloInstruction>> HloInstruction::CreateFromProto(
           proto.shape(), all_operands(),
           /*replica_groups=*/
           std::vector<ReplicaGroup>(proto.replica_groups().begin(),
-                                    proto.replica_groups().end()),
-          /*barrier=*/proto.cross_replica_sum_barrier());
+                                    proto.replica_groups().end()));
       break;
     }
     case HloOpcode::kConvolution:
@@ -675,10 +674,9 @@ HloInstruction::CreateCrossReplicaSum(
 
 /* static */ std::unique_ptr<HloInstruction> HloInstruction::CreateAllToAll(
     const Shape& shape, tensorflow::gtl::ArraySlice<HloInstruction*> operands,
-    const std::vector<ReplicaGroup>& replica_groups,
-    tensorflow::StringPiece barrier) {
+    const std::vector<ReplicaGroup>& replica_groups) {
   return absl::make_unique<HloAllToAllInstruction>(shape, operands,
-                                                   replica_groups, barrier);
+                                                   replica_groups);
 }
 
 /* static */ std::unique_ptr<HloInstruction> HloInstruction::CreateInfeed(
@@ -3185,26 +3183,16 @@ const string& HloInstruction::outfeed_config() const {
 }
 
 const std::vector<ReplicaGroup>& HloInstruction::replica_groups() const {
-  if (opcode() == HloOpcode::kCrossReplicaSum) {
-    return Cast<HloAllReduceInstruction>(this)->replica_groups();
-  }
-  return Cast<HloAllToAllInstruction>(this)->replica_groups();
+  return Cast<HloCollectiveInstruction>(this)->replica_groups();
 }
 
 string HloInstruction::cross_replica_sum_barrier() const {
-  if (opcode() == HloOpcode::kCrossReplicaSum) {
     return Cast<HloAllReduceInstruction>(this)->cross_replica_sum_barrier();
-  }
-  return Cast<HloAllToAllInstruction>(this)->cross_replica_sum_barrier();
 }
 
 void HloInstruction::set_cross_replica_sum_barrier(const string& barrier) {
-  if (opcode() == HloOpcode::kCrossReplicaSum) {
     return Cast<HloAllReduceInstruction>(this)->set_cross_replica_sum_barrier(
         barrier);
-  }
-  return Cast<HloAllToAllInstruction>(this)->set_cross_replica_sum_barrier(
-      barrier);
 }
 
 absl::optional<int64> HloInstruction::all_reduce_id() const {
