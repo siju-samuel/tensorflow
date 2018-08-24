@@ -29,11 +29,17 @@ limitations under the License.
 #include "tensorflow/compiler/xla/types.h"
 #include "tensorflow/compiler/xla/xla_data.pb.h"
 
-namespace op = xla::testing::opcode_matchers;
-
 namespace xla {
 namespace {
-using ReshapeMoverTest = HloVerifiedTestBase;
+
+namespace op = xla::testing::opcode_matchers;
+
+class ReshapeMoverTest : public HloVerifiedTestBase {
+ public:
+  ReshapeMoverTest()
+      : HloVerifiedTestBase(/*layout_sensitive=*/false,
+                            /*allow_mixed_precision=*/false) {}
+};
 
 TEST_F(ReshapeMoverTest, ReshapesWithDifferentInputShapesNotMoved) {
   HloComputation::Builder builder(TestName());

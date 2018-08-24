@@ -49,18 +49,18 @@ limitations under the License.
 #include "tensorflow/core/platform/protobuf.h"
 #include "tensorflow/core/platform/regexp.h"
 
-using ::absl::nullopt;
-using ::absl::optional;
-using ::absl::StrAppend;
-using ::absl::StrCat;
-using ::absl::StrJoin;
-using ::tensorflow::Env;
-using ::tensorflow::WriteStringToFile;
-using ::tensorflow::io::JoinPath;
-
 namespace xla {
 namespace hlo_graph_dumper {
 namespace {
+
+using absl::nullopt;
+using absl::optional;
+using absl::StrAppend;
+using absl::StrCat;
+using absl::StrJoin;
+using tensorflow::Env;
+using tensorflow::WriteStringToFile;
+using tensorflow::io::JoinPath;
 
 // Helpers for Printf and Appendf.
 template <typename T>
@@ -457,7 +457,7 @@ labelloc = t;
 tooltip = " ";
 // DOT graphs accept a stylesheet as a URI.  So naturally, an inline
 // stylesheet is a data URI!
-stylesheet="
+stylesheet=<
   data:text/css,
   @import url(https://fonts.googleapis.com/css?family=Roboto:400,700);
   svg text {
@@ -466,7 +466,7 @@ stylesheet="
   }
 
   %s
-"
+>
 
 )";
 
