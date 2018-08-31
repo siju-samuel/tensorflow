@@ -2231,7 +2231,7 @@ cc_library(
         "platform/macros.h",
         "platform/platform.h",
         "platform/types.h",
-    ],
+    ] + if_windows(["platform/windows/integral_types.h"]),
     copts = tf_copts(),
     linkopts = ["-ldl"],
     deps = [
@@ -2471,6 +2471,7 @@ tf_cuda_library(
 
 cc_header_only_library(
     name = "framework_internal_headers_lib",
+    includes = ["../../external/com_google_absl"],
     deps = [
         ":lib",
         ":lib_internal",
@@ -2559,6 +2560,7 @@ cc_header_only_library(
         # ABSL headers get dropped, so we add them back here.
         "@com_google_absl//absl/strings",
     ],
+    includes = ["../../external/com_google_absl"],
     visibility = ["//visibility:public"],
     deps = [
         ":framework",
@@ -2568,6 +2570,7 @@ cc_header_only_library(
 
 cc_header_only_library(
     name = "stream_executor_headers_lib",
+    includes = ["../../external/com_google_absl"],
     visibility = ["//visibility:public"],
     deps = [
         ":stream_executor",
@@ -2739,6 +2742,7 @@ CORE_CPU_LIB_HEADERS = CORE_CPU_BASE_HDRS + [
     "common_runtime/graph_optimizer.h",
     "common_runtime/local_device.h",
     "common_runtime/lower_if_op.h",
+    "common_runtime/lower_while_op.h",
     "common_runtime/memory_types.h",
     "common_runtime/mkl_cpu_allocator.h",
     "common_runtime/optimization_registry.h",
@@ -2795,6 +2799,7 @@ tf_cuda_library(
         "common_runtime/hierarchical_tree_broadcaster.cc",
         "common_runtime/local_device.cc",
         "common_runtime/lower_if_op.cc",
+        "common_runtime/lower_while_op.cc",
         "common_runtime/memory_types.cc",
         "common_runtime/mkl_cpu_allocator.cc",
         "common_runtime/optimization_registry.cc",
@@ -3219,7 +3224,6 @@ tf_cc_tests(
         "lib/core/status_test.cc",
         "lib/core/stringpiece_test.cc",
         "lib/core/threadpool_test.cc",
-        "lib/gtl/array_slice_test.cc",
         "lib/gtl/cleanup_test.cc",
         "lib/gtl/compactptrset_test.cc",
         "lib/gtl/edit_distance_test.cc",
@@ -4074,6 +4078,7 @@ tf_cuda_cc_test(
         ":testlib",
         "//third_party/eigen3",
         "//tensorflow/cc:cc_ops",
+        "//tensorflow/core/kernels:collective_ops",
         "//tensorflow/core/kernels:control_flow_ops",
         "//tensorflow/core/kernels:cwise_op",
         "//tensorflow/core/kernels:dense_update_ops",
@@ -4115,6 +4120,7 @@ tf_cc_test(
         "//tensorflow/cc:cc_ops",
         # Link with support for TensorFlow Debugger (tfdbg).
         "//tensorflow/core/debug",
+        "//tensorflow/core/kernels:collective_ops",
         "//tensorflow/core/kernels:control_flow_ops",
         "//tensorflow/core/kernels:cwise_op",
         "//tensorflow/core/kernels:dense_update_ops",
@@ -4580,6 +4586,29 @@ tf_cc_tests(
     name = "common_runtime_lower_if_op_test",
     size = "small",
     srcs = ["common_runtime/lower_if_op_test.cc"],
+    deps = [
+        ":all_kernels",
+        ":core_cpu",
+        ":core_cpu_internal",
+        ":direct_session",
+        ":framework",
+        ":framework_internal",
+        ":lib",
+        ":test",
+        ":test_main",
+        ":testlib",
+        "//tensorflow/cc:cc_ops",
+        "//tensorflow/cc:cc_ops_internal",
+        "//tensorflow/cc:client_session",
+        "//tensorflow/cc:function_ops",
+        "//tensorflow/cc:ops",
+    ],
+)
+
+tf_cc_tests(
+    name = "common_runtime_lower_while_op_test",
+    size = "small",
+    srcs = ["common_runtime/lower_while_op_test.cc"],
     deps = [
         ":all_kernels",
         ":core_cpu",
