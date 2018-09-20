@@ -69,9 +69,8 @@ class RandomOpsTest(xla_test.XLATestCase):
     def rng(dtype):
       return random_ops.random_normal(shape=[2], dtype=dtype)
 
-    # TODO(b/34339814): implement inverse erf support for non-F32 types.
-    dtype = dtypes.float32
-    self._testRngIsNotConstant(rng, dtype)
+    for dtype in self._random_types() & self.float_types:
+      self._testRngIsNotConstant(rng, dtype)
 
   def testRandomUniformIsInRange(self):
     for dtype in self._random_types():
@@ -93,13 +92,13 @@ class RandomOpsTest(xla_test.XLATestCase):
     def rng(dtype):
       return random_ops.truncated_normal(shape=[2], dtype=dtype)
 
-    # TODO(b/34339814): implement inverse erf support for non-F32 types.
-    self._testRngIsNotConstant(rng, dtypes.float32)
+    for dtype in self._random_types() & self.float_types:
+      self._testRngIsNotConstant(rng, dtype)
 
   def testTruncatedNormalIsInRange(self):
     count = 10000000
-    # TODO(b/34339814): implement inverse erf support for non-F32 types.
-    for dtype in [dtypes.float32]:
+    # TODO(b/34339814): make this test work with 16 bit float types.
+    for dtype in self._random_types() & {dtypes.float32, dtypes.float64}:
       with self.cached_session() as sess:
         with self.test_scope():
           x = random_ops.truncated_normal(shape=[count], dtype=dtype)
