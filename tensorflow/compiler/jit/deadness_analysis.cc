@@ -15,11 +15,12 @@ limitations under the License.
 
 #include "tensorflow/compiler/jit/deadness_analysis.h"
 #include "absl/algorithm/container.h"
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_join.h"
 #include "tensorflow/compiler/jit/deadness_analysis_internal.h"
 #include "tensorflow/core/graph/algorithm.h"
 #include "tensorflow/core/graph/tensor_id.h"
-#include "tensorflow/core/lib/gtl/flatset.h"
 #include "tensorflow/core/lib/hash/hash.h"
 
 // ALGORITHM OVERVIEW
@@ -297,7 +298,7 @@ class SymbolPredicate : public Predicate {
 
 template <typename FunctionTy>
 /*static*/ void Predicate::Visit(Predicate* p, const FunctionTy& func) {
-  gtl::FlatSet<Predicate*> visited;
+  absl::flat_hash_set<Predicate*> visited;
   std::vector<Predicate*> stack;
 
   stack.push_back(p);
@@ -420,15 +421,15 @@ class PredicateFactory {
     }
   };
 
-  gtl::FlatMap<SignatureForAndOr, std::unique_ptr<Predicate>,
-               HashSignatureForAndOr>
+  absl::flat_hash_map<SignatureForAndOr, std::unique_ptr<Predicate>,
+                      HashSignatureForAndOr>
       interned_and_or_instances_;
-  gtl::FlatMap<SignatureForNot, std::unique_ptr<Predicate>>
+  absl::flat_hash_map<SignatureForNot, std::unique_ptr<Predicate>>
       interned_not_instances_;
-  gtl::FlatMap<SignatureForAndRec, std::unique_ptr<Predicate>>
+  absl::flat_hash_map<SignatureForAndRec, std::unique_ptr<Predicate>>
       interned_and_rec_instances_;
-  gtl::FlatMap<SignatureForSymbol, std::unique_ptr<Predicate>,
-               HashSignatureForSymbol>
+  absl::flat_hash_map<SignatureForSymbol, std::unique_ptr<Predicate>,
+                      HashSignatureForSymbol>
       interned_symbol_instances_;
 };
 
@@ -466,7 +467,7 @@ Predicate* PredicateFactory::MakeAndOrImpl(
       is_and ? Predicate::Kind::kAnd : Predicate::Kind::kOr;
   Predicate::Kind other_pred_kind =
       is_and ? Predicate::Kind::kOr : Predicate::Kind::kAnd;
-  gtl::FlatSet<Predicate*> simplified_ops_set;
+  absl::flat_hash_set<Predicate*> simplified_ops_set;
   std::vector<Predicate*> simplified_ops;
   for (Predicate* op : operands) {
     // Simplify A&A => A and  A|A => A.
@@ -491,7 +492,7 @@ Predicate* PredicateFactory::MakeAndOrImpl(
   }
 
   // Simplify "A&~A=>False" and "A|~A=>True".
-  gtl::FlatSet<Predicate*> negated_ops;
+  absl::flat_hash_set<Predicate*> negated_ops;
   for (Predicate* op : simplified_ops) {
     if (op->kind() == Predicate::Kind::kNot) {
       negated_ops.insert(dynamic_cast<NotPredicate&>(*op).operand());
@@ -511,7 +512,7 @@ Predicate* PredicateFactory::MakeAndOrImpl(
   //
   // First find any predicates contained in all subops.
   std::vector<Predicate*> common_inner_operands;
-  gtl::FlatSet<Predicate*> common_inner_operands_set;
+  absl::flat_hash_set<Predicate*> common_inner_operands_set;
   for (Predicate* op : simplified_ops) {
     if (op->kind() != other_pred_kind) {
       common_inner_operands.clear();
@@ -572,7 +573,8 @@ class DeadnessAnalysisImpl : public DeadnessAnalysis {
   Status PopulateWithReversePostOrder(absl::Span<Node* const> rpo);
   bool HasInputsWithMismatchingDeadness(const Node& node) override;
   void Print() const override;
-  gtl::FlatMap<TensorId, string, TensorId::Hasher> PredicateMapAsString() const;
+  absl::flat_hash_map<TensorId, string, TensorId::Hasher> PredicateMapAsString()
+      const;
 
  private:
   enum class EdgeKind { kDataAndControl, kDataOnly, kControlOnly };
@@ -614,7 +616,7 @@ class DeadnessAnalysisImpl : public DeadnessAnalysis {
   Status HandleNode(Node* n, std::vector<bool>* should_revisit);
 
   const Graph& graph_;
-  gtl::FlatMap<TensorId, Predicate*, TensorId::Hasher> predicate_map_;
+  absl::flat_hash_map<TensorId, Predicate*, TensorId::Hasher> predicate_map_;
   PredicateFactory predicate_factory_;
   bool vlog_;
 };
@@ -977,9 +979,9 @@ DeadnessAnalysis::~DeadnessAnalysis() {}
   return Status::OK();
 }
 
-gtl::FlatMap<TensorId, string, TensorId::Hasher>
+absl::flat_hash_map<TensorId, string, TensorId::Hasher>
 DeadnessAnalysisImpl::PredicateMapAsString() const {
-  gtl::FlatMap<TensorId, string, TensorId::Hasher> result;
+  absl::flat_hash_map<TensorId, string, TensorId::Hasher> result;
   std::vector<TensorId> tensor_ids;
   for (const auto& kv_pair : predicate_map_) {
     CHECK(result.insert({kv_pair.first, kv_pair.second->ToString()}).second);
