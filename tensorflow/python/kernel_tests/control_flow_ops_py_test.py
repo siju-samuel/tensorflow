@@ -333,7 +333,6 @@ class ControlFlowTest(test.TestCase):
       with self.assertRaisesOpError("has inputs from different frames"):
         res.eval(feed_dict={data: 1.0})
 
-  @test_util.disable_control_flow_v2("b/113294340")
   def testCondBool(self):
     values = constant_op.constant(10)
     fn1 = lambda: math_ops.add(values, 1)
@@ -1116,8 +1115,8 @@ class ControlFlowTest(test.TestCase):
       self.assertAllClose(10.0, r.eval())
 
   def testWhile_Gpu_2(self):
-    self._testWhile_Gpu_1(use_gpu=False)
-    self._testWhile_Gpu_1(use_gpu=True)
+    self._testWhile_Gpu_2(use_gpu=False)
+    self._testWhile_Gpu_2(use_gpu=True)
 
   def testWhileShape(self):
     with self.cached_session():
