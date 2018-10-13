@@ -136,12 +136,11 @@ class Compiler {
       std::unique_ptr<HloModule> module, se::StreamExecutor* executor,
       DeviceMemoryAllocator* device_allocator) = 0;
 
-  // Overload which optimizes a HLO module group, a set of module which runs
-  // concurrently on multiple devices potentially communicating data between the
-  // modules.
-  virtual Status RunHloPasses(HloModuleGroup* module_group,
-                              se::StreamExecutor* executor,
-                              DeviceMemoryAllocator* device_allocator) = 0;
+  // Optimizes a HLO module group, a set of module which runs concurrently on
+  // multiple devices potentially communicating data between the modules.
+  virtual Status RunHloPassesOnModuleGroup(
+      HloModuleGroup* module_group, se::StreamExecutor* executor,
+      DeviceMemoryAllocator* device_allocator) = 0;
 
   // Compiles the HLO module for execution on a device given by the executor,
   // and returns an executable object or an error status. No HLO passes are
@@ -157,9 +156,10 @@ class Compiler {
       std::unique_ptr<HloModule> module, se::StreamExecutor* executor,
       DeviceMemoryAllocator* device_allocator) = 0;
 
-  // Overload which compiles a set of HLO modules that can run in parallel,
-  // potentially communicating data between the modules.
-  virtual StatusOr<std::vector<std::unique_ptr<Executable>>> RunBackend(
+  // Compiles a set of HLO modules that can run in parallel, potentially
+  // communicating data between the modules.
+  virtual StatusOr<std::vector<std::unique_ptr<Executable>>>
+  RunBackendOnModuleGroup(
       std::unique_ptr<HloModuleGroup> module_group,
       std::vector<std::vector<se::StreamExecutor*>> stream_exec,
       DeviceMemoryAllocator* device_allocator) = 0;

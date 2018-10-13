@@ -21,14 +21,15 @@ limitations under the License.
 #endif
 
 namespace xla {
-Status LLVMCompiler::RunHloPasses(HloModuleGroup* module_group,
-                                  se::StreamExecutor* executor,
-                                  DeviceMemoryAllocator* device_allocator) {
+Status LLVMCompiler::RunHloPassesOnModuleGroup(
+    HloModuleGroup* module_group, se::StreamExecutor* executor,
+    DeviceMemoryAllocator* device_allocator) {
   return Unimplemented(
       "Model partitioning not implemented for the CPU/GPU compilers!");
 }
 
-StatusOr<std::vector<std::unique_ptr<Executable>>> LLVMCompiler::RunBackend(
+StatusOr<std::vector<std::unique_ptr<Executable>>>
+LLVMCompiler::RunBackendOnModuleGroup(
     std::unique_ptr<HloModuleGroup> module_group,
     std::vector<std::vector<se::StreamExecutor*>> stream_exec,
     DeviceMemoryAllocator* device_allocator) {
