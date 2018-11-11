@@ -961,10 +961,6 @@ tf_module {
     argspec: "args=[\'tensor\', \'dtype\', \'name\', \'optimize\'], varargs=None, keywords=None, defaults=[\'None\', \'None\', \'True\'], "
   }
   member_method {
-    name: "op_scope"
-    argspec: "args=[\'values\', \'name\', \'default_name\'], varargs=None, keywords=None, defaults=[\'None\'], "
-  }
-  member_method {
     name: "pad"
     argspec: "args=[\'tensor\', \'paddings\', \'mode\', \'name\', \'constant_values\'], varargs=None, keywords=None, defaults=[\'CONSTANT\', \'None\', \'0\'], "
   }
@@ -1255,34 +1251,6 @@ tf_module {
   member_method {
     name: "timestamp"
     argspec: "args=[\'name\'], varargs=None, keywords=None, defaults=[\'None\'], "
-  }
-  member_method {
-    name: "to_bfloat16"
-    argspec: "args=[\'x\', \'name\'], varargs=None, keywords=None, defaults=[\'ToBFloat16\'], "
-  }
-  member_method {
-    name: "to_complex128"
-    argspec: "args=[\'x\', \'name\'], varargs=None, keywords=None, defaults=[\'ToComplex128\'], "
-  }
-  member_method {
-    name: "to_complex64"
-    argspec: "args=[\'x\', \'name\'], varargs=None, keywords=None, defaults=[\'ToComplex64\'], "
-  }
-  member_method {
-    name: "to_double"
-    argspec: "args=[\'x\', \'name\'], varargs=None, keywords=None, defaults=[\'ToDouble\'], "
-  }
-  member_method {
-    name: "to_float"
-    argspec: "args=[\'x\', \'name\'], varargs=None, keywords=None, defaults=[\'ToFloat\'], "
-  }
-  member_method {
-    name: "to_int32"
-    argspec: "args=[\'x\', \'name\'], varargs=None, keywords=None, defaults=[\'ToInt32\'], "
-  }
-  member_method {
-    name: "to_int64"
-    argspec: "args=[\'x\', \'name\'], varargs=None, keywords=None, defaults=[\'ToInt64\'], "
   }
   member_method {
     name: "transpose"
