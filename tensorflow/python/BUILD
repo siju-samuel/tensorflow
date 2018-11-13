@@ -145,12 +145,14 @@ py_library(
         "//tensorflow/python/compat",
         "//tensorflow/python/data",
         "//tensorflow/python/distribute:estimator_training",
+        "//tensorflow/python/eager:def_function",
         "//tensorflow/python/feature_column:feature_column_py",
         "//tensorflow/python/keras",
         "//tensorflow/python/ops/distributions",
         "//tensorflow/python/ops/linalg",
         "//tensorflow/python/ops/losses",
         "//tensorflow/python/ops/parallel_for",
+        "//tensorflow/python/ops/ragged",
         "//tensorflow/python/ops/signal",
         "//tensorflow/python/profiler",
         "//tensorflow/python/saved_model",
@@ -1856,6 +1858,7 @@ tf_gen_op_wrapper_private_py(
     visibility = [
         "//learning/brain/contrib/text:__pkg__",
         "//learning/brain/contrib/text/python/ragged:__pkg__",
+        "//tensorflow/python/ops/ragged:__pkg__",
     ],
 )
 
@@ -1864,6 +1867,7 @@ tf_gen_op_wrapper_private_py(
     visibility = [
         "//learning/brain/contrib/text:__pkg__",
         "//learning/brain/contrib/text/python/ragged:__pkg__",
+        "//tensorflow/python/ops/ragged:__pkg__",
     ],
 )
 
@@ -1872,6 +1876,7 @@ tf_gen_op_wrapper_private_py(
     visibility = [
         "//learning/brain/contrib/text:__pkg__",
         "//learning/brain/contrib/text/python/ragged:__pkg__",
+        "//tensorflow/python/ops/ragged:__pkg__",
     ],
 )
 
