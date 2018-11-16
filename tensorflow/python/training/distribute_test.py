@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from tensorflow.python.framework import constant_op
+from tensorflow.python.framework import dtypes
 from tensorflow.python.ops import variable_scope
 from tensorflow.python.platform import test
 from tensorflow.python.training import distribute as distribute_lib
@@ -40,8 +42,16 @@ def _get_test_variable(name, synchronization, aggregation):
 
 class _TestStrategy(distribute_lib.DistributionStrategy):
 
+  def __init__(self):
+    super(_TestStrategy, self).__init__(_TestExtended(self))
+
+
+class _TestExtended(distribute_lib.DistributionStrategyExtended):
+
   def _call_for_each_replica(self, fn, args, kwargs):
-    with _TestReplicaContext(self, replica_id_in_sync_group=0):
+    with _TestReplicaContext(
+        self._container_strategy(),
+        replica_id_in_sync_group=constant_op.constant(0, dtypes.int32)):
       return fn(*args, **kwargs)
 
   def _create_variable(self, next_creator, *args, **kwargs):
@@ -53,6 +63,7 @@ def _assert_in_default_state(t):
   t.assertIs(distribution_strategy_context._get_default_replica_context(),
              distribution_strategy_context.get_replica_context())
   t.assertIs(None, distribution_strategy_context.get_cross_replica_context())
+  t.assertFalse(distribution_strategy_context.in_cross_replica_context())
   t.assertIs(distribution_strategy_context._get_default_distribution_strategy(),
              distribution_strategy_context.get_distribution_strategy())
   t.assertFalse(distribution_strategy_context.has_distribution_strategy())
@@ -69,6 +80,7 @@ class TestStrategyTest(test.TestCase):
       self.assertTrue(replica_context is not None)
       self.assertIs(None,
                     distribution_strategy_context.get_cross_replica_context())
+      self.assertFalse(distribution_strategy_context.in_cross_replica_context())
       self.assertTrue(distribution_strategy_context.has_distribution_strategy())
       self.assertIs(dist,
                     distribution_strategy_context.get_distribution_strategy())
@@ -92,6 +104,7 @@ class TestStrategyTest(test.TestCase):
       self.assertIs(None, distribution_strategy_context.get_replica_context())
       self.assertIs(dist,
                     distribution_strategy_context.get_cross_replica_context())
+      self.assertTrue(distribution_strategy_context.in_cross_replica_context())
       self.assertTrue(distribution_strategy_context.has_distribution_strategy())
       self.assertIs(dist,
                     distribution_strategy_context.get_distribution_strategy())
@@ -131,6 +144,7 @@ class DefaultDistributionStrategyTest(test.TestCase):
       self.assertIs(None, distribution_strategy_context.get_replica_context())
       self.assertIs(dist,
                     distribution_strategy_context.get_cross_replica_context())
+      self.assertTrue(distribution_strategy_context.in_cross_replica_context())
       self.assertIs(dist,
                     distribution_strategy_context.get_distribution_strategy())
       self.assertFalse(
