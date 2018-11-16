@@ -51,12 +51,17 @@ class TFAPIChangeSpec(ast_edits.APIChangeSpec):
         "tf.nn.sufficient_statistics": {
             "keep_dims": "keepdims"
         },
-        "tf.zeros_like": {
-            "tensor": "input",
+        "tf.nn.conv3d": {
+            "filter": "filters"
         },
-        "tf.ones_like": {
-            "tensor": "input",
+        "tf.nn.conv3d_transpose": {
+            "value": "input",
+            "filter": "filters",
         },
+        "tf.nn.convolution": {
+            "filter": "filters",
+            "dilation_rate": "dilations",
+        }
     }
 
     # Mapping from function to the new name of the function
@@ -130,6 +135,10 @@ class TFAPIChangeSpec(ast_edits.APIChangeSpec):
         "tf.argmin": ["input", "axis", "name", "dimension", "output_type"],
         "tf.boolean_mask": ["tensor", "mask", "name", "axis"],
         "tf.convert_to_tensor": ["value", "dtype", "name", "preferred_dtype"],
+        "tf.nn.convolution": [
+            "input", "filter", "padding", "strides", "dilation_rate", "name",
+            "data_format"],
+        "tf.nn.crelu": ["features", "name", "axis"],
         "tf.nn.pool": [
             "input", "window_shape", "pooling_type", "padding", "dilation_rate",
             "strides", "name", "data_format"
@@ -167,9 +176,38 @@ class TFAPIChangeSpec(ast_edits.APIChangeSpec):
         "SUM_OVER_BATCH_SIZE.\n"
     )
 
+    assert_return_type_comment = (
+        "WARNING: assert_* functions have been changed to return None, the "
+        "data argument has been removed, and arguments have been reordered."
+    )
+
+    assert_rank_comment = (
+        "WARNING: assert_rank_* functions have been changed to return None, and"
+        " the data and summarize arguments have been removed."
+    )
+
     # Function warnings. <function name> placeholder inside warnings will be
     # replaced by function name.
     self.function_warnings = {
+        "tf.assert_greater": assert_return_type_comment,
+        "tf.assert_equal": assert_return_type_comment,
+        "tf.assert_less": assert_return_type_comment,
+        "tf.assert_rank": assert_rank_comment,
+        "tf.debugging.assert_equal": assert_return_type_comment,
+        "tf.debugging.assert_greater": assert_return_type_comment,
+        "tf.debugging.assert_greater_equal": assert_return_type_comment,
+        "tf.debugging.assert_integer": assert_return_type_comment,
+        "tf.debugging.assert_less": assert_return_type_comment,
+        "tf.debugging.assert_less_equal": assert_return_type_comment,
+        "tf.debugging.assert_near": assert_return_type_comment,
+        "tf.debugging.assert_negative": assert_return_type_comment,
+        "tf.debugging.assert_non_negative": assert_return_type_comment,
+        "tf.debugging.assert_non_positive": assert_return_type_comment,
+        "tf.debugging.assert_none_equal": assert_return_type_comment,
+        "tf.debugging.assert_positive": assert_return_type_comment,
+        "tf.debugging.assert_rank": assert_rank_comment,
+        "tf.debugging.assert_rank_at_least": assert_rank_comment,
+        "tf.debugging.assert_rank_in": assert_rank_comment,
         "tf.train.exponential_decay":
             decay_function_comment,
         "tf.train.piecewise_constant":
@@ -204,6 +242,17 @@ class TFAPIChangeSpec(ast_edits.APIChangeSpec):
             default_loss_reduction_changed,
         "tf.estimator.BaselineRegressor":
             default_loss_reduction_changed,
+        "tf.nn.conv1d":
+        "WARNING: use_cudnn_on_gpu argument has been removed and \"value\" was "
+        "renamed to \"input\"",
+        "tf.nn.conv2d":
+        "WARNING: use_cudnn_on_gpu argument has been removed and \"filter\" "
+        "was renamed to \"filters\"",
+        "tf.nn.conv2d_backprop_filter":
+        "WARNING: use_cudnn_on_gpu argument has been removed",
+        "tf.nn.conv2d_backprop_input":
+        "WARNING: use_cudnn_on_gpu argument has been removed and \"filter\" "
+        "was renamed to \"filters\"",
     }
     # Right now we can't have both a rename and a warning.
     self.symbol_renames = {
