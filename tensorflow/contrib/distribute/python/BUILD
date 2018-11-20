@@ -40,7 +40,6 @@ cuda_py_test(
         "//tensorflow/python/estimator:estimator_py",
     ],
     tags = [
-        "no_oss",
         "no_pip",
     ],
 )
@@ -475,7 +474,7 @@ cuda_py_test(
         "//tensorflow/python:platform",
         "//tensorflow/python:summary",
     ],
-    shard_count = 5,
+    shard_count = 48,
     tags = [
         "multi_and_single_gpu",
         "no_pip",
