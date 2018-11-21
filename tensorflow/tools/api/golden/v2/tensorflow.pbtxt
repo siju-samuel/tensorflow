@@ -510,10 +510,6 @@ tf_module {
   }
   member_method {
     name: "batch_to_space"
-    argspec: "args=[\'input\', \'crops\', \'block_size\', \'name\'], varargs=None, keywords=None, defaults=[\'None\'], "
-  }
-  member_method {
-    name: "batch_to_space_nd"
     argspec: "args=[\'input\', \'block_shape\', \'crops\', \'name\'], varargs=None, keywords=None, defaults=[\'None\'], "
   }
   member_method {
@@ -819,10 +815,6 @@ tf_module {
   member_method {
     name: "meshgrid"
     argspec: "args=[], varargs=args, keywords=kwargs, defaults=None"
-  }
-  member_method {
-    name: "min_max_variable_partitioner"
-    argspec: "args=[\'max_partitions\', \'axis\', \'min_slice_size\', \'bytes_per_string_element\'], varargs=None, keywords=None, defaults=[\'1\', \'0\', \'262144\', \'16\'], "
   }
   member_method {
     name: "minimum"
