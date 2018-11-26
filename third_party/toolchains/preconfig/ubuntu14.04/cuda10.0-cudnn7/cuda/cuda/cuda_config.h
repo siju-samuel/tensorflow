@@ -13,27 +13,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef TENSORFLOW_PLATFORM_REGEXP_H_
-#define TENSORFLOW_PLATFORM_REGEXP_H_
+#ifndef CUDA_CUDA_CONFIG_H_
+#define CUDA_CUDA_CONFIG_H_
 
-#include "absl/strings/string_view.h"
-#include "tensorflow/core/platform/platform.h"
-#include "tensorflow/core/platform/types.h"
+#define TF_CUDA_CAPABILITIES CudaVersion("3.0")
 
-#if defined(PLATFORM_GOOGLE) || defined(PLATFORM_GOOGLE_ANDROID) || \
-    defined(GOOGLE_RE2)
-#include "tensorflow/core/platform/google/build_config/re2.h"
-namespace tensorflow {
-typedef absl::string_view RegexpStringPiece;
-}  // namespace tensorflow
+#define TF_CUDA_VERSION "10.0"
+#define TF_CUDNN_VERSION "7"
 
-#else
+#define TF_CUDA_TOOLKIT_PATH "/usr/local/cuda-10.0"
 
-#include "re2/re2.h"
-namespace tensorflow {
-typedef re2::StringPiece RegexpStringPiece;
-}  // namespace tensorflow
-
-#endif
-
-#endif  // TENSORFLOW_PLATFORM_REGEXP_H_
+#endif  // CUDA_CUDA_CONFIG_H_
