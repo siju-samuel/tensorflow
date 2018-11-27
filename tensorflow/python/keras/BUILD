@@ -122,6 +122,7 @@ py_library(
         "constraints.py",
         "engine/__init__.py",
         "engine/base_layer.py",
+        "engine/base_layer_utils.py",
         "engine/distributed_training_utils.py",
         "engine/input_layer.py",
         "engine/input_spec.py",
@@ -306,6 +307,7 @@ py_test(
         ":keras",
         "//tensorflow/python:client_testlib",
         "//third_party/py/numpy",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
@@ -746,6 +748,7 @@ py_test(
         ":keras",
         "//tensorflow/python:client_testlib",
         "//third_party/py/numpy",
+        "@absl_py//absl/testing:parameterized",
     ],
 )
 
