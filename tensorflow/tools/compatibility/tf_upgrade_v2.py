@@ -31,6 +31,12 @@ class TFAPIChangeSpec(ast_edits.APIChangeSpec):
     # Maps from a function name to a dictionary that describes how to
     # map from an old argument keyword to the new argument keyword.
     self.function_keyword_renames = {
+        "tf.argmin": {
+            "dimension": "axis",
+        },
+        "tf.argmax": {
+            "dimension": "axis",
+        },
         "tf.image.crop_and_resize": {
             "box_ind": "box_indices",
         },
@@ -408,8 +414,8 @@ class TFAPIChangeSpec(ast_edits.APIChangeSpec):
     self.function_reorders = {
         "tf.io.serialize_sparse": ["sp_input", "name", "out_type"],
         "tf.io.serialize_many_sparse": ["sp_input", "name", "out_type"],
-        "tf.argmax": ["input", "axis", "name", "dimension", "output_type"],
-        "tf.argmin": ["input", "axis", "name", "dimension", "output_type"],
+        "tf.argmax": ["input", "axis", "name", "axis", "output_type"],
+        "tf.argmin": ["input", "axis", "name", "axis", "output_type"],
         "tf.batch_to_space": ["input", "crops", "block_size", "name"],
         "tf.boolean_mask": ["tensor", "mask", "name", "axis"],
         "tf.convert_to_tensor": ["value", "dtype", "name", "preferred_dtype"],
@@ -675,6 +681,22 @@ class TFAPIChangeSpec(ast_edits.APIChangeSpec):
         name: new_name
         for name, new_name in self.symbol_renames.items()
         if name not in self.function_warnings and name not in excluded_renames
+    }
+
+    export_saved_model_renamed = (
+        "(Manual edit required) Please rename the function export_savedmodel() "
+        "to export_saved_model(). Two things to note:\n\t(1) The argument "
+        "strip_default_attributes has been removed. The function will always "
+        "strip the default attributes from ops. If this breaks your code, "
+        "please switch to tf.compat.v1.estimator.Estimator.\n\t(2) This change "
+        "only effects core estimator. If you are using "
+        "tf.contrib.learn.Estimator, please switch to using core estimator.")
+
+    # Specify warnings for functions that aren't restricted to the tf.x.y.z
+    # format. This should only be used for methods with unique names, e.g.
+    # export_savedmodel, which is only defined in Estimator objects.
+    self.unrestricted_function_warnings = {
+        "export_savedmodel": export_saved_model_renamed,
     }
 
   @staticmethod

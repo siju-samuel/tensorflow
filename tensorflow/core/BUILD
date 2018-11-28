@@ -2980,6 +2980,7 @@ tf_cuda_library(
         ":lib_internal",
         ":proto_text",
         ":protos_all_cc",
+        "@com_google_absl//absl/memory",
         "//third_party/eigen3",
         "//tensorflow/core/grappler:grappler_item",
     ] + mkl_deps(),
@@ -3429,7 +3430,6 @@ tf_cc_tests(
         "platform/stacktrace_handler_test.cc",
         "platform/subprocess_test.cc",
         "platform/vmodule_benchmark_test.cc",
-        "platform/vmodule_test.cc",
     ],
     deps = [
         ":lib",
@@ -3440,6 +3440,20 @@ tf_cc_tests(
         ":test_main",
         "//third_party/eigen3",
         "@zlib_archive//:zlib",
+    ],
+)
+
+tf_cc_test(
+    name = "vmodule_test",
+    srcs = ["platform/vmodule_test.cc"],
+    tags = ["optonly"],
+    deps = [
+        ":lib",
+        ":lib_internal",
+        ":lib_test_internal",
+        ":protos_all_cc",
+        ":test",
+        "//third_party/eigen3",
     ],
 )
 
@@ -3845,6 +3859,7 @@ tf_cc_tests_gpu(
         ":test",
         ":test_main",
         ":testlib",
+        "@com_google_absl//absl/memory",
     ],
 )
 
@@ -3873,6 +3888,7 @@ tf_cc_tests_gpu(
         ":test",
         ":test_main",
         ":testlib",
+        "@com_google_absl//absl/memory",
     ],
 )
 
@@ -4440,6 +4456,7 @@ tf_cc_test(
         "//tensorflow/core/kernels:random_ops",
         "//tensorflow/core/kernels:shape_ops",
         "//third_party/eigen3",
+        "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
     ],
 )
