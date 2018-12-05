@@ -1814,7 +1814,6 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        ":android_tensorflow_lib_lite",
         ":protos_all_cc_impl",
         "@com_google_absl//absl/container:flat_hash_set",
         "@protobuf_archive//:protobuf",
@@ -1837,7 +1836,6 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        ":android_tensorflow_lib_lite_nortti",
         ":protos_all_cc_impl",
         "@com_google_absl//absl/container:flat_hash_set",
         "@protobuf_archive//:protobuf",
@@ -2083,9 +2081,7 @@ tf_proto_library_cc(
     srcs = ["protobuf/master.proto"],
     cc_api_version = 2,
     protodeps = tf_additional_all_protos(),
-    visibility = [
-        "//tensorflow:internal",
-    ],
+    visibility = ["//tensorflow:internal"],
 )
 
 tf_proto_library_cc(

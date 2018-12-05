@@ -417,6 +417,8 @@ class TFAPIChangeSpec(ast_edits.APIChangeSpec):
             "tf.sparse.concat",
         "tf.sparse_split":
             "tf.sparse.split",
+        "tf.sparse_matmul":
+            "tf.linalg.matmul",
         "tf.random.stateless_multinomial":
             "tf.random.stateless_categorical",
         "tf.string_to_hash_bucket":
@@ -467,6 +469,10 @@ class TFAPIChangeSpec(ast_edits.APIChangeSpec):
             "tf.string",
         "tf.lite.constants.QUANTIZED_UINT8":
             "tf.uint8",
+        "tf.arg_max":
+            "tf.argmax",
+        "tf.arg_min":
+            "tf.argmin",
     }
     # pylint: enable=line-too-long
 
@@ -496,9 +502,16 @@ class TFAPIChangeSpec(ast_edits.APIChangeSpec):
             "data_format"
         ],
         "tf.nn.crelu": ["features", "name", "axis"],
+        "tf.nn.weighted_moments": [
+            "x", "axes", "frequency_weights", "name", "keep_dims"
+        ],
         "tf.nn.pool": [
             "input", "window_shape", "pooling_type", "padding", "dilation_rate",
             "strides", "name", "data_format"
+        ],
+        "tf.nn.separable_conv2d": [
+            "input", "depthwise_filter", "pointwise_filter", "strides",
+            "padding", "rate", "name", "data_format"
         ],
         "tf.nn.depthwise_conv2d": [
             "input", "filter", "strides", "padding", "rate", "name",
@@ -537,6 +550,10 @@ class TFAPIChangeSpec(ast_edits.APIChangeSpec):
         ],
         "tf.sparse.segment_sum": [
             "data", "indices", "segment_ids", "name", "num_segments"
+        ],
+        "tf.sparse_matmul": [
+            "a", "b", "transpose_a", "transpose_b", "a_is_sparse",
+            "b_is_sparse", "name"
         ],
         "tf.io.decode_csv": [
             "records",
