@@ -50,6 +50,7 @@ from tensorflow.python.ops import gradients_impl
 from tensorflow.python.ops import resource_variable_ops
 from tensorflow.python.platform import tf_logging as logging
 from tensorflow.python.util import compat
+from tensorflow.python.util import memory
 from tensorflow.python.util import nest
 from tensorflow.python.util import tf_decorator
 from tensorflow.python.util import tf_inspect
@@ -816,6 +817,8 @@ class PolymorphicFunction(object):
     self._name = name
     self._autograph = autograph
     self._function_cache = collections.OrderedDict()
+    self._garbage_collector = _PolymorphicFunctionGarbageCollector(
+        self._function_cache)
     self._function_attributes = attributes or {}
 
     self._lock = threading.Lock()
@@ -869,11 +872,22 @@ class PolymorphicFunction(object):
     """Returns the wrapped Python function."""
     return self._python_function
 
-  def _get_concrete_function_internal(self, *args, **kwargs):
-    """Bypasses error checking when getting a graph function."""
+  def _get_concrete_function_internal_garbage_collected(self, *args, **kwargs):
+    """Returns a concrete function which cleans up its graph function."""
     if self._input_signature:
       args, kwargs = None, None
     graph_function, _, _ = self._maybe_define_function(args, kwargs)
+    return graph_function
+
+  def _get_concrete_function_internal(self, *args, **kwargs):
+    """Bypasses error checking when getting a graph function."""
+    graph_function = self._get_concrete_function_internal_garbage_collected(
+        *args, **kwargs)
+    # We're returning this concrete function to someone, and they may keep a
+    # reference to the FuncGraph without keeping a reference to the Function
+    # object. So we won't clean up the reference cycles manually and instead
+    # will leave them to Python's garbage collector.
+    graph_function._garbage_collector.release()  # pylint: disable=protected-access
     return graph_function
 
   def get_concrete_function(self, *args, **kwargs):
@@ -1180,9 +1194,17 @@ class PolymorphicFunction(object):
         else:
           python_call_signature = tuple(
               _encode_arg_for_serialization(arg) for arg in args)
+        # pylint: disable=protected-access
         # Save information about non-Tensor arguments with the concrete
         # function. Used to serialize PolymorphicFunctions.
-        graph_function._python_call_signature = python_call_signature  # pylint: disable=protected-access
+        graph_function._python_call_signature = python_call_signature
+        # Tell the Function to clean up its graph once it goes out of
+        # scope. Function does not do this in its constructor since it gets used
+        # in some places (like Keras) where the FuncGraph lives longer than the
+        # Function.
+        graph_function._garbage_collector = _FunctionGarbageCollector(
+            graph_function.graph)
+        # pylint: enable=protected-access
         self._function_cache[cache_key] = graph_function
       return graph_function, args, kwargs
 
@@ -1639,12 +1661,14 @@ def class_method_to_instance_method(original_function, instance):
   assert hasattr(original_function, "_input_signature")
   assert hasattr(original_function, "python_function")
 
+  weak_bound_method_wrapper = None
   def bound_method_wrapper(*args, **kwargs):
     """Wraps either a dummy MethodType or a converted AutoGraph function."""
     # __wrapped__ allows AutoGraph to swap in a converted function.
-    wrapped_fn = bound_method_wrapper.__wrapped__
+    strong_bound_method_wrapper = weak_bound_method_wrapper()
+    wrapped_fn = strong_bound_method_wrapper.__wrapped__
 
-    if wrapped_fn is bound_method_wrapper.__original_wrapped__:
+    if wrapped_fn is strong_bound_method_wrapper.__original_wrapped__:
       # If __wrapped__ was not replaced, then call original_function.
       wrapped_fn = original_function.python_function
       if tf_inspect.ismethod(wrapped_fn):
@@ -1654,6 +1678,7 @@ def class_method_to_instance_method(original_function, instance):
     # If __wrapped__ was replaced, then it is always an unbound function
     # that takes self as first argument.
     return wrapped_fn(weak_instance(), *args, **kwargs)
+  weak_bound_method_wrapper = weakref.ref(bound_method_wrapper)
 
   # pylint: disable=protected-access
   # We make a dummy MethodType object to generate the correct bound method
@@ -1670,3 +1695,33 @@ def class_method_to_instance_method(original_function, instance):
   wrapped_instance_func = tf_decorator.make_decorator(
       original_function.python_function, instance_func)
   return wrapped_instance_func
+
+
+class _PolymorphicFunctionGarbageCollector(object):
+  """Cleans up cycles when a defun goes out of scope."""
+
+  def __init__(self, cache):
+    self._cache = cache
+
+  def __del__(self):
+    if func_graph_module is None or memory is None:
+      return
+    while self._cache:
+      self._cache.popitem()
+    memory.dismantle_ordered_dict(self._cache)
+
+
+class _FunctionGarbageCollector(object):
+  """Cleans up reference cycles when a Function goes out of scope."""
+
+  def __init__(self, func_graph):
+    self._func_graph = func_graph
+
+  def release(self):
+    """Call off the FuncGraph deletion."""
+    self._func_graph = None
+
+  def __del__(self):
+    if func_graph_module is None or memory is None or self._func_graph is None:
+      return
+    func_graph_module.dismantle_func_graph(self._func_graph)

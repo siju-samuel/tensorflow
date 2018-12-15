@@ -61,10 +61,13 @@ py_library(
         ":engine",
         ":layers",
         ":pil_for_keras",
+        "@keras_applications_archive//:keras_applications",
         "//tensorflow/python:training",
         "//tensorflow/python/keras/optimizer_v2",
+        # TODO(kathywu): move saving into engine after resolving circular
+        # dependencies between Keras and SavedModel
+        "//tensorflow/python/keras/saving",
         "//tensorflow/python/saved_model",
-        "@keras_applications_archive//:keras_applications",
     ],
 )
 
@@ -145,6 +148,7 @@ py_library(
         "utils/data_utils.py",
         "utils/io_utils.py",
         "utils/losses_utils.py",
+        "utils/metrics_utils.py",
     ],
     srcs_version = "PY2AND3",
     deps = [
@@ -559,6 +563,19 @@ cuda_py_test(
     shard_count = 4,
 )
 
+cuda_py_test(
+    name = "unified_gru_test",
+    size = "medium",
+    srcs = ["layers/unified_gru_test.py"],
+    additional_deps = [
+        ":keras",
+        "@absl_py//absl/testing:parameterized",
+        "//third_party/py/numpy",
+        "//tensorflow/python:client_testlib",
+    ],
+    shard_count = 4,
+)
+
 py_test(
     name = "serialization_test",
     size = "small",
@@ -770,6 +787,21 @@ py_test(
 )
 
 py_test(
+    name = "correctness_test",
+    size = "medium",
+    srcs = ["engine/correctness_test.py"],
+    shard_count = 2,
+    srcs_version = "PY2AND3",
+    tags = ["notsan"],
+    deps = [
+        ":keras",
+        "//tensorflow/python:client_testlib",
+        "//third_party/py/numpy",
+        "@absl_py//absl/testing:parameterized",
+    ],
+)
+
+py_test(
     name = "training_test",
     size = "medium",
     srcs = ["engine/training_test.py"],
@@ -800,12 +832,11 @@ py_test(
 
 py_test(
     name = "training_generator_test",
-    size = "enormous",
+    size = "large",
     srcs = ["engine/training_generator_test.py"],
     shard_count = 3,
     srcs_version = "PY2AND3",
     tags = [
-        "no_oss",
         "notsan",
     ],
     deps = [
