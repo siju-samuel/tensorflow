@@ -203,6 +203,12 @@ config_setting(
 )
 
 config_setting(
+    name = "arm",
+    values = {"cpu": "arm"},
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
     name = "freebsd",
     values = {"cpu": "freebsd"},
     visibility = ["//visibility:public"],
@@ -370,6 +376,7 @@ package_group(
         "-//third_party/tensorflow/python/estimator",
         "//learning/deepmind/...",
         "//learning/meta_rank/...",
+        "//learning/pathways/...",  # While dataset C++ api requires internals
         "//tensorflow/...",
         "//tensorflow_estimator/contrib/...",
         "//tensorflow_fold/llgtm/...",
