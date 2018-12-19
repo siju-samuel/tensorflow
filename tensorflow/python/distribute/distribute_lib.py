@@ -325,11 +325,6 @@ class DistributionStrategy(object):
     return self._extended._scope(self)  # pylint: disable=protected-access
 
   @doc_controls.do_not_generate_docs  # DEPRECATED, moving to `extended`
-  def read_var(self, v):
-    """DEPRECATED: use extended.read_var() instead."""
-    return self._extended.read_var(v)
-
-  @doc_controls.do_not_generate_docs  # DEPRECATED, moving to `extended`
   def colocate_vars_with(self, colocate_with_variable):
     """DEPRECATED: use extended.colocate_vars_with() instead."""
     return self._extended.colocate_vars_with(colocate_with_variable)
@@ -1043,9 +1038,9 @@ class DistributionStrategyExtended(object):
     ```
 
     Args:
-      colocate_with_variable: A created in `self.scope()`. Variables created
-        while in the returned context manager will be on the same set of
-        devices as `colocate_with_variable`.
+      colocate_with_variable: A variable created in this strategy's `scope()`.
+        Variables created while in the returned context manager will be on the
+        same set of devices as `colocate_with_variable`.
 
     Returns:
       A context manager.
