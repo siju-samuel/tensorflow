@@ -176,8 +176,8 @@ class UnifiedGRUTest(keras_parameterized.TestCase):
       cudnn_model.fit(x_train, y_train)
       y_4 = cudnn_model.predict(x_train)
 
-      self.assertAllClose(y_1, y_3)
-      self.assertAllClose(y_2, y_4)
+      self.assertAllClose(y_1, y_3, rtol=1e-5, atol=1e-5)
+      self.assertAllClose(y_2, y_4, rtol=1e-5, atol=1e-5)
 
   @parameterized.named_parameters(
       # test_name, use_bias, bias_initializer, activation
@@ -414,8 +414,6 @@ class GRULayerV1OnlyTest(test.TestCase, parameterized.TestCase):
   @test_util.run_v1_only('b/120941292')
   @test_util.run_in_graph_and_eager_modes(config=_config)
   def test_statefulness_GRU(self):
-    self.skipTest('b/121275483')
-
     num_samples = 2
     timesteps = 3
     embedding_dim = 4
