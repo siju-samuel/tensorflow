@@ -1012,7 +1012,16 @@ tf_kernel_library(
     hdrs = ["tile_functor.h"],
     gpu_srcs = [
         "tile_functor.h",
-        "tile_functor_gpu.cu.cc",
+        "tile_functor_gpu.h",
+        "tile_functor_gpu_bool.cu.cc",
+        "tile_functor_gpu_complex64.cu.cc",
+        "tile_functor_gpu_complex128.cu.cc",
+        "tile_functor_gpu_double.cu.cc",
+        "tile_functor_gpu_float.cu.cc",
+        "tile_functor_gpu_half.cu.cc",
+        "tile_functor_gpu_int16.cu.cc",
+        "tile_functor_gpu_int32.cu.cc",
+        "tile_functor_gpu_int64.cu.cc",
     ],
     prefix = "tile_ops",
     deps = ARRAY_DEPS,
@@ -3270,7 +3279,15 @@ tf_kernel_library(
 
 tf_kernel_library(
     name = "scan_ops",
-    prefix = "scan_ops",
+    srcs = ["scan_ops.cc"],
+    hdrs = ["scan_ops.h"],
+    gpu_srcs = [
+        "scan_ops.h",
+        "scan_ops_gpu.h",
+        "scan_ops_gpu_double.cu.cc",
+        "scan_ops_gpu_float.cu.cc",
+        "scan_ops_gpu_half.cu.cc",
+    ],
     deps = MATH_DEPS + if_cuda(["@cub_archive//:cub"]),
 )
 
@@ -3853,7 +3870,21 @@ tf_kernel_library(
 
 tf_kernel_library(
     name = "topk_op",
-    prefix = "topk_op",
+    srcs = ["topk_op.cc"],
+    hdrs = ["topk_op.h"],
+    gpu_srcs = [
+        "topk_op.h",
+        "topk_op_gpu.h",
+        "topk_op_gpu_double.cu.cc",
+        "topk_op_gpu_float.cu.cc",
+        "topk_op_gpu_half.cu.cc",
+        "topk_op_gpu_int64.cu.cc",
+        "topk_op_gpu_int32.cu.cc",
+        "topk_op_gpu_int16.cu.cc",
+        "topk_op_gpu_uint16.cu.cc",
+        "topk_op_gpu_int8.cu.cc",
+        "topk_op_gpu_uint8.cu.cc",
+    ],
     deps = NN_DEPS + if_cuda(["@cub_archive//:cub"]),
 )
 
