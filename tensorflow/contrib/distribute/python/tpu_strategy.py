@@ -34,6 +34,7 @@ from tensorflow.python.distribute import cross_device_ops as cross_device_ops_li
 from tensorflow.python.distribute import device_util
 from tensorflow.python.distribute import distribute_lib
 from tensorflow.python.distribute import input_lib
+from tensorflow.python.distribute import numpy_dataset
 from tensorflow.python.distribute import reduce_util
 from tensorflow.python.distribute import values
 from tensorflow.python.distribute.cluster_resolver import tpu_cluster_resolver as resolver_lib
@@ -49,9 +50,6 @@ from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import variable_scope as vs
 from tensorflow.python.platform import tf_logging as logging
 from tensorflow.python.util import nest
-
-
-_TPU_INITIALIZE_SYSTEM_COLLECTION = "TPU_STRATEGY_INITIALIZE"
 
 
 def initialize_tpu_system(cluster_resolver=None):
@@ -306,6 +304,11 @@ class TPUExtended(distribute_lib.DistributionStrategyExtended):
         functools.partial(self._call_dataset_fn, dataset_fn),
         self._input_workers)
 
+  def _experimental_make_numpy_dataset(self, numpy_input, session):
+    return numpy_dataset.one_host_numpy_dataset(
+        numpy_input, numpy_dataset.SingleDevice(self.get_host_cpu_device(0)),
+        session)
+
   # TODO(priyag): Deal with OutOfRange errors once b/111349762 is fixed.
   # TODO(sourabhbajaj): Remove the initial_loop_values parameter when we have
   # a mechanism to infer the outputs of `fn`. Pending b/110550782.
@@ -463,34 +466,15 @@ class TPUExtended(distribute_lib.DistributionStrategyExtended):
     """
     initialize_tpu_system(self._tpu_cluster_resolver)
 
-  def _initialize(self):
-    if context.executing_eagerly():
-      # TODO(priyag): Add appopriate call here when eager is supported for TPUs.
-      raise NotImplementedError("Eager mode not supported in TPUStrategy.")
-    else:
-      # TODO(jhseu): We need this hack because DistributionStrategies must be
-      # pickleable for copy.deepcopy(). Remove when initialize_system goes away.
-      graph = ops.get_default_graph()
-      tpu_init = graph.get_collection(_TPU_INITIALIZE_SYSTEM_COLLECTION)
-      if tpu_init:
-        return tpu_init
-      graph.add_to_collection(_TPU_INITIALIZE_SYSTEM_COLLECTION,
-                              tpu.initialize_system())
-      return graph.get_collection(_TPU_INITIALIZE_SYSTEM_COLLECTION)
-
-  def _finalize(self):
-    if context.executing_eagerly():
-      # TODO(priyag): Add appopriate call here when eager is supported for TPUs.
-      raise NotImplementedError("Eager mode not supported in TPUStrategy.")
-    else:
-      return []
-
   def _create_variable(self, next_creator, *args, **kwargs):
     """Create a TPUMirroredVariable. See `DistributionStrategy.scope`."""
     colocate_with = kwargs.pop("colocate_with", None)
     if colocate_with is None:
       device_map = self._device_map
       logical_device = 0  # TODO(josh11b): Get logical device from scope here.
+    elif isinstance(colocate_with, numpy_dataset.SingleDevice):
+      with ops.device(colocate_with.device):
+        return next_creator(*args, **kwargs)
     else:
       device_map = colocate_with.device_map
       logical_device = colocate_with.logical_device
