@@ -333,9 +333,8 @@ tf_py_test(
         "@absl_py//absl/testing:parameterized",
         "//third_party/py/numpy",
         "//tensorflow/python:client_testlib",
-        "//tensorflow/python:layers",
-        "//tensorflow/python:nn",
     ],
+    shard_count = 12,
     tags = ["notsan"],
 )
 
@@ -398,7 +397,7 @@ tf_py_test(
         "//tensorflow/python:client_testlib",
         "//tensorflow/python:training",
     ],
-    shard_count = 4,
+    shard_count = 8,
     tags = ["notsan"],
 )
 
@@ -467,6 +466,17 @@ tf_py_test(
     name = "advanced_activations_test",
     size = "medium",
     srcs = ["layers/advanced_activations_test.py"],
+    additional_deps = [
+        ":keras",
+        "@absl_py//absl/testing:parameterized",
+        "//tensorflow/python:client_testlib",
+    ],
+)
+
+tf_py_test(
+    name = "tensorflow_op_layer_test",
+    size = "medium",
+    srcs = ["layers/tensorflow_op_layer_test.py"],
     additional_deps = [
         ":keras",
         "@absl_py//absl/testing:parameterized",
@@ -629,7 +639,7 @@ tf_py_test(
 
 tf_py_test(
     name = "gru_test",
-    size = "large",
+    size = "medium",
     srcs = ["layers/gru_test.py"],
     additional_deps = [
         ":keras",
@@ -637,7 +647,7 @@ tf_py_test(
         "//third_party/py/numpy",
         "//tensorflow/python:client_testlib",
     ],
-    shard_count = 2,
+    shard_count = 4,
     tags = ["notsan"],  # http://b/62136390
 )
 
