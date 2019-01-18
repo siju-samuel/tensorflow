@@ -143,8 +143,11 @@ def _tensorrt_configure_impl(repository_ctx):
     # Forward to the pre-configured remote repository.
     remote_config_repo = repository_ctx.os.environ[_TF_TENSORRT_CONFIG_REPO]
     repository_ctx.template("BUILD", Label(remote_config_repo + ":BUILD"), {})
-    # Set up config file.
-    _tpl(repository_ctx, "build_defs.bzl", {"%{if_tensorrt}": "if_true"})
+    repository_ctx.template(
+        "build_defs.bzl",
+        Label(remote_config_repo + ":build_defs.bzl"),
+        {},
+    )
     return
 
   if _TENSORRT_INSTALL_PATH not in repository_ctx.os.environ:
