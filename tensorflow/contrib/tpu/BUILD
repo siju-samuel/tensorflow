@@ -171,6 +171,7 @@ tf_custom_op_py_library(
         ":tpu_ordinal_selector_op_op_lib",
     ],
     srcs_version = "PY2AND3",
+    visibility = ["//visibility:public"],
     deps = [
         ":tpu_ordinal_selector_op",
     ],
@@ -318,6 +319,7 @@ py_library(
         "//tensorflow/contrib/cluster_resolver:cluster_resolver_py",
         "//tensorflow/contrib/compiler:xla",
         "//tensorflow/contrib/tpu/proto:compilation_result_proto_py",
+        "//tensorflow/contrib/tpu/proto:dynamic_padding_proto_py",
         "//tensorflow/contrib/tpu/proto:optimization_parameters_proto_py",
         "//tensorflow/contrib/tpu/proto:topology_proto_py",
         "//tensorflow/contrib/tpu/proto:tpu_embedding_configuration_proto_py",
