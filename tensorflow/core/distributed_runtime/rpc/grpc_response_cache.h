@@ -19,7 +19,6 @@ limitations under the License.
 #include <unordered_map>
 #include <vector>
 
-#include "absl/time/time.h"
 #include "tensorflow/core/distributed_runtime/rpc/grpc_util.h"
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/lib/core/status.h"
@@ -64,8 +63,8 @@ struct WorkerCacheEntry;
 // bytes are in use by the cache or they expire (according to `expire_time`).
 class GrpcResponseCache {
  public:
-  GrpcResponseCache(int64 max_bytes, absl::Duration expire_duration)
-      : max_bytes_(max_bytes), expire_duration_(expire_duration) {}
+  GrpcResponseCache(int64 max_bytes, int64 expire_time_seconds)
+      : max_bytes_(max_bytes), expire_time_seconds_(expire_time_seconds) {}
 
   // Lookup the result for key.
   // If it is finished, invoke `done_cb` immediately after filling `response`.
@@ -80,7 +79,7 @@ class GrpcResponseCache {
  private:
   int64 current_bytes_ GUARDED_BY(mu_) = 0;
   const int64 max_bytes_;
-  const absl::Duration expire_duration_;
+  const int64 expire_time_seconds_;
 
   std::unordered_map<string, std::shared_ptr<WorkerCacheEntry>> requests_
       GUARDED_BY(mu_);

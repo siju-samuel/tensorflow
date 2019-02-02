@@ -296,7 +296,9 @@ def experimental_tpu_fit_loop(model,
 
     (grouped_inputs, grouped_outputs, grouped_updates,
      grouped_session_args) = current_strategy.extended.call_for_each_replica(
-         _per_device_fit_function, args=(model._distributed_model_train,))
+         _per_device_fit_function,
+         args=(distributed_training_utils.get_distributed_model(
+             model, ModeKeys.TRAIN),))
     (all_inputs, all_outputs, all_updates,
      all_session_args) = distributed_training_utils.unwrap_values(
          current_strategy, grouped_inputs, grouped_outputs,
@@ -477,7 +479,9 @@ def experimental_tpu_test_loop(model,
 
     (grouped_inputs, grouped_outputs, grouped_updates,
      grouped_session_args) = current_strategy.extended.call_for_each_replica(
-         _per_device_eval_function, args=(model._distributed_model_test,))
+         _per_device_eval_function,
+         args=(distributed_training_utils.get_distributed_model(
+             model, ModeKeys.TEST),))
 
     (all_inputs, all_outputs, all_updates,
      all_session_args) = distributed_training_utils.unwrap_values(
@@ -597,9 +601,7 @@ def experimental_tpu_predict_loop(model,
     # during graph optimization.
     padding_handler = padding_util.PartialBatchPaddingHandler(
         model._feed_output_shapes)
-    batched_dataset = input_lib._get_batched_dataset(dataset)
-    batch_size, _, prefetch_buffer = input_lib._get_batched_dataset_attributes(
-        batched_dataset)
+    batch_size, _, prefetch_buffer = input_lib._get_dataset_attributes(dataset)
     padding_handler.padded_batch_size = batch_size
     padding_handler.padding_mask = dataset.reduce(padding_handler.padding_mask,
                                                   padding_handler.update_mask)
@@ -639,7 +641,9 @@ def experimental_tpu_predict_loop(model,
 
     (grouped_inputs, grouped_outputs, grouped_updates,
      grouped_session_args) = current_strategy.extended.call_for_each_replica(
-         _per_device_predict_function, args=(model._distributed_model_predict,))
+         _per_device_predict_function,
+         args=(distributed_training_utils.get_distributed_model(
+             model, ModeKeys.PREDICT),))
 
     (all_inputs, all_outputs, all_updates,
      all_session_args) = distributed_training_utils.unwrap_values(

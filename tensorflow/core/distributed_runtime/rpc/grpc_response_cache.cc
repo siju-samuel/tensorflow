@@ -14,8 +14,7 @@ limitations under the License.
 ==============================================================================*/
 
 #include "tensorflow/core/distributed_runtime/rpc/grpc_response_cache.h"
-
-#include "absl/time/clock.h"
+#include "tensorflow/core/platform/env.h"
 
 namespace tensorflow {
 
@@ -27,7 +26,7 @@ struct WorkerCacheEntry {
   };
 
   State state = State::PENDING;
-  absl::Time expires;
+  int64 expires_seconds;
 
   ::grpc::ByteBuffer response_buf;
   Status response_status;
@@ -84,7 +83,7 @@ void GrpcResponseCache::LookupOrCompute(const string& key, RPCResponse response,
     }
 
     if (req->state == WorkerCacheEntry::State::FINISHED) {
-      if (req->expires > absl::Now()) {
+      if (req->expires_seconds > Env::Default()->NowSeconds()) {
         VLOG(1) << "Reuse cached response for " << key;
         response.CopyFrom(req->response_buf);
         done_cb(req->response_status);
@@ -105,7 +104,7 @@ void GrpcResponseCache::LookupOrCompute(const string& key, RPCResponse response,
 
     VLOG(2) << "No cache entry for " << key << ", running user computation.";
     req->state = WorkerCacheEntry::State::ACTIVE;
-    req->expires = absl::Now() + expire_duration_;
+    req->expires_seconds = Env::Default()->NowSeconds() + expire_time_seconds_;
   }
 
   compute_func([this, key, req, response](Status status) {
@@ -146,11 +145,11 @@ void GrpcResponseCache::MaybeCleanup() {
   std::sort(ordered_entries.begin(), ordered_entries.end(),
             [](const std::pair<string, std::shared_ptr<WorkerCacheEntry>>& a,
                const std::pair<string, std::shared_ptr<WorkerCacheEntry>>& b) {
-              return a.second->expires > b.second->expires;
+              return a.second->expires_seconds > b.second->expires_seconds;
             });
 
   std::unordered_map<string, std::shared_ptr<WorkerCacheEntry>> kept;
-  absl::Time now = absl::Now();
+  int64 now = Env::Default()->NowSeconds();
   int64 bytes_used = 0;
 
   // Always keep active requests.
@@ -164,7 +163,7 @@ void GrpcResponseCache::MaybeCleanup() {
   // chances of overfilling the cache when active requests complete and
   // amortizes cache cleanup cost.
   for (auto& pair : ordered_entries) {
-    if (pair.second->expires < now || bytes_used >= max_bytes_ / 2) {
+    if (pair.second->expires_seconds < now || bytes_used >= max_bytes_ / 2) {
       break;
     }
 

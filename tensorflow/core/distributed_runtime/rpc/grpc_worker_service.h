@@ -18,7 +18,6 @@ limitations under the License.
 
 #include <memory>
 #include <unordered_map>
-#include "absl/time/time.h"
 #include "tensorflow/core/distributed_runtime/recent_request_ids.h"
 #include "tensorflow/core/distributed_runtime/rpc/grpc_response_cache.h"
 #include "tensorflow/core/distributed_runtime/rpc/grpc_worker_service_impl.h"
@@ -68,7 +67,7 @@ struct GrpcWorkerServiceOptions {
   std::unordered_map<int, int> queue_depth;
   int num_serving_threads = 8;
   int64 response_cache_bytes = 0;
-  absl::Duration response_cache_duration = absl::ZeroDuration();
+  int64 response_cache_expires_seconds = 0;
 };
 
 // Returns an implementation of WorkerService rpc service.
