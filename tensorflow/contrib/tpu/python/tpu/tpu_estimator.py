@@ -2019,9 +2019,9 @@ class TPUEstimator(estimator_lib.Estimator):
   ==========
 
   `model_fn` should return `TPUEstimatorSpec`, which expects the `eval_metrics`
-  for TPU evaluation. However, if eval_on_tpu is False, `model_fn` must return
-  `EstimatorSpec` and the evaluation will execute on CPU or GPU; in this case
-  the following discussion on TPU evaluation does not apply.
+  for TPU evaluation. If eval_on_tpu is False, the evaluation will execute on
+  CPU or GPU; in this case the following discussion on TPU evaluation does not
+  apply.
 
   `TPUEstimatorSpec.eval_metrics` is a tuple of `metric_fn` and `tensors`, where
   `tensors` could be a list of any nested structure of `Tensor`s (See
@@ -2779,9 +2779,6 @@ class TPUEstimator(estimator_lib.Estimator):
         tpu_init_ops = []
         if ctx.embedding_config:
           tpu_init_ops.extend(ctx.embedding_config.tpu_embedding.init_ops)
-          embedding_variables_and_ops = (
-              ctx.embedding_config.tpu_embedding.create_variables_and_ops())
-          tpu_init_ops.extend(embedding_variables_and_ops.load_ops())
 
         input_holders = _InputPipeline(input_fn, batch_axis, ctx)
         enqueue_ops, dequeue_fn, input_hooks, run_infeed_loop_on_coordinator = (
@@ -2797,6 +2794,24 @@ class TPUEstimator(estimator_lib.Estimator):
         if mode == model_fn_lib.ModeKeys.TRAIN:
           compile_op, loss, host_call, scaffold, training_hooks = (
               _train_on_tpu_system(ctx, model_fn_wrapper, dequeue_fn))
+          if ctx.embedding_config:
+            g = ops.get_default_graph()
+            table_to_config_dict = (
+                ctx.embedding_config.tpu_embedding.table_to_config_dict)
+            optimization_parameters = (
+                ctx.embedding_config.tpu_embedding.optimization_parameters)
+            embedding_variable_name_by_table, slot_variable_names_by_table = (
+                _tpu_estimator_embedding.get_full_variable_names(
+                    g, table_to_config_dict, optimization_parameters
+                )
+            )
+            embedding_variables_and_ops = (
+                ctx.embedding_config.tpu_embedding.create_variables_and_ops(
+                    embedding_variable_name_by_table,
+                    slot_variable_names_by_table
+                ))
+            tpu_init_ops.extend(embedding_variables_and_ops.load_ops())
+
           host_ops = host_call.create_tpu_hostcall()
           if host_ops is None:
             host_ops = []

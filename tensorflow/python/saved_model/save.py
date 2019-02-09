@@ -504,6 +504,8 @@ def _fill_meta_graph_def(meta_graph_def, saveable_view, signature_functions):
         resource_initializer_ops.append(
             _call_function_with_mapped_captures(
                 resource_initializer_function, [], resource_map))
+    resource_initializer_ops.extend(
+        asset_info.asset_initializers_by_resource.values())
     with ops.control_dependencies(resource_initializer_ops):
       init_op = control_flow_ops.no_op()
     # Add the same op to the main_op collection and to the init_op
@@ -777,8 +779,8 @@ def save(obj, export_dir, signatures=None):
         checkpoint_graph_view)
 
   signatures = signature_serialization.canonicalize_signatures(signatures)
-  signature_map = signature_serialization.create_signature_map(
-      signatures, checkpoint_graph_view)
+  signature_serialization.validate_saveable_view(checkpoint_graph_view)
+  signature_map = signature_serialization.create_signature_map(signatures)
   checkpoint_graph_view.add_object(
       parent_node=checkpoint_graph_view.root,
       name_in_parent=signature_serialization.SIGNATURE_ATTRIBUTE_NAME,

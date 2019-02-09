@@ -457,10 +457,7 @@ cc_library(
     hdrs = ["platform/logger.h"],
     copts = tf_copts(),
     visibility = ["//visibility:public"],
-    deps = [
-        ":lib_proto_parsing",
-        "@protobuf_archive//:protobuf",
-    ],
+    deps = [":lib_proto_parsing"],
 )
 
 filegroup(
@@ -2995,6 +2992,8 @@ tf_cuda_library(
         "common_runtime/collective_param_resolver_local.cc",
         "common_runtime/collective_rma_local.cc",
         "common_runtime/collective_util.cc",
+        "common_runtime/colocation_graph.cc",
+        "common_runtime/colocation_graph.h",
         "common_runtime/constant_folding.cc",
         "common_runtime/copy_tensor.cc",
         "common_runtime/costmodel_manager.cc",
