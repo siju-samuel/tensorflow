@@ -143,7 +143,6 @@ py_library(
         ":map_fn",
         ":math_ops",
         ":metrics",
-        ":mode_keys",
         ":nccl_ops",
         ":nn",
         ":ops",
@@ -174,6 +173,7 @@ py_library(
         "//tensorflow/lite/python:lite",
         "//tensorflow/python/compat",
         "//tensorflow/python/compat:v2_compat",
+        "//tensorflow/python/compiler",
         "//tensorflow/python/data",
         "//tensorflow/python/distribute",
         "//tensorflow/python/distribute:estimator_training",
@@ -3694,6 +3694,7 @@ cuda_py_test(
         "//third_party/py/numpy",
     ],
     tags = ["no_windows_gpu"],
+    xla_enable_strict_auto_jit = True,
 )
 
 py_library(
@@ -4719,6 +4720,7 @@ cuda_py_test(
         ":math_ops",
         "//tensorflow/core:protos_all_py",
     ],
+    xla_enable_strict_auto_jit = False,  # Graph structure is different with autojit
 )
 
 cuda_py_test(
@@ -6071,29 +6073,6 @@ py_binary(
     deps = [
         ":framework_for_generated_wrappers",
         ":pywrap_tensorflow_internal",
-    ],
-)
-
-py_library(
-    name = "mode_keys",
-    srcs = [
-        "training/mode_keys.py",
-    ],
-    srcs_version = "PY2AND3",
-    deps = [
-        ":util",
-    ],
-)
-
-tf_py_test(
-    name = "mode_keys_test",
-    size = "small",
-    srcs = [
-        "training/mode_keys_test.py",
-    ],
-    additional_deps = [
-        ":client_testlib",
-        ":mode_keys",
     ],
 )
 
