@@ -119,6 +119,7 @@ TEST_F(OperatorTest, SimpleOperators) {
   CheckSimpleOperator<LogisticOperator>("LOGISTIC", OperatorType::kLogistic);
   CheckSimpleOperator<TanhOperator>("TANH", OperatorType::kTanh);
   CheckSimpleOperator<ExpOperator>("EXP", OperatorType::kExp);
+  CheckSimpleOperator<CosOperator>("COS", OperatorType::kCos);
   CheckSimpleOperator<LogSoftmaxOperator>("LOG_SOFTMAX",
                                           OperatorType::kLogSoftmax);
   CheckSimpleOperator<TensorFlowMaximumOperator>(
@@ -237,6 +238,13 @@ TEST_F(OperatorTest, BuiltinGather) {
   auto output_toco_op =
       SerializeAndDeserialize(GetOperator("GATHER", OperatorType::kGather), op);
   ASSERT_NE(nullptr, output_toco_op.get());
+}
+
+TEST_F(OperatorTest, BuiltinGatherNd) {
+  GatherNdOperator op;
+  auto output_toco_op = SerializeAndDeserialize(
+      GetOperator("GATHER_ND", OperatorType::kGatherNd), op);
+  ASSERT_NE(output_toco_op.get(), nullptr);
 }
 
 TEST_F(OperatorTest, BuiltinL2Pool) {
@@ -814,6 +822,10 @@ TEST_F(OperatorTest, VersioningBatchToSpaceNDTest) {
 
 TEST_F(OperatorTest, VersioningStridedSliceTest) {
   SimpleVersioningTest<StridedSliceOperator>();
+}
+
+TEST_F(OperatorTest, VersioningSpaceToDepthTest) {
+  SimpleVersioningTest<SpaceToDepthOperator>();
 }
 
 TEST_F(OperatorTest, VersioningSliceTest) {

@@ -1572,6 +1572,21 @@ tensorflow::Status ConvertGatherOperator(
   return tensorflow::Status::OK();
 }
 
+tensorflow::Status ConvertGatherNdOperator(
+    const NodeDef& node, const TensorFlowImportFlags& tf_import_flags,
+    Model* model) {
+  CHECK_EQ(node.op(), "GatherNd");
+  TF_QCHECK_OK(CheckInputsCount(node, tf_import_flags, 2));
+  const auto indices_data_type = GetDataTypeAttr(node, "Tindices");
+  CHECK(indices_data_type == DT_INT32 || indices_data_type == DT_INT64);
+  auto* op = new GatherNdOperator;
+  op->inputs.push_back(node.input(0));
+  op->inputs.push_back(node.input(1));
+  op->outputs.push_back(node.name());
+  model->operators.emplace_back(op);
+  return tensorflow::Status::OK();
+}
+
 template <typename Op>
 tensorflow::Status ConvertArgMinMaxOperator(
     const NodeDef& node, const TensorFlowImportFlags& tf_import_flags,
@@ -2396,6 +2411,7 @@ ConverterMapType GetTensorFlowNodeConverterMap() {
       {"Const", ConvertConstOperator},
       {"Conv2D", ConvertConvOperator},
       {"Conv2DBackpropInput", ConvertTransposeConvOperator},
+      {"Cos", ConvertSimpleOperator<CosOperator, 1, 1>},
       {"CTCBeamSearchDecoder", ConvertCTCBeamSearchDecoderOperator},
       {"DepthToSpace", ConvertDepthToSpaceOperator},
       {"DepthwiseConv2dNative", ConvertDepthwiseConvOperator},
@@ -2414,6 +2430,7 @@ ConverterMapType GetTensorFlowNodeConverterMap() {
       {"FusedBatchNorm", ConvertFusedBatchNormOperator},
       {"Gather", ConvertGatherOperator},
       {"GatherV2", ConvertGatherOperator},
+      {"GatherNd", ConvertGatherNdOperator},
       {"Greater", ConvertSimpleOperator<TensorFlowGreaterOperator, 2, 1>},
       {"GreaterEqual",
        ConvertSimpleOperator<TensorFlowGreaterEqualOperator, 2, 1>},

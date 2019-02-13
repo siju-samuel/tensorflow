@@ -508,6 +508,26 @@ class Gather : public BuiltinOperator<GatherOperator, ::tflite::GatherOptions,
   }
 };
 
+class GatherNd
+    : public BuiltinOperator<GatherNdOperator, ::tflite::GatherNdOptions,
+                             ::tflite::BuiltinOptions_GatherNdOptions> {
+ public:
+  using BuiltinOperator::BuiltinOperator;
+
+  flatbuffers::Offset<TfLiteOptions> WriteOptions(
+      const TocoOperator& op,
+      flatbuffers::FlatBufferBuilder* builder) const override {
+    return ::tflite::CreateGatherNdOptions(*builder);
+  }
+
+  void ReadOptions(const TfLiteOptions& options,
+                   TocoOperator* op) const override {}
+
+  int GetVersion(const OperatorSignature& op_signature) const override {
+    return 1;
+  }
+};
+
 class Svdf : public BuiltinOperator<SvdfOperator, ::tflite::SVDFOptions,
                                     ::tflite::BuiltinOptions_SVDFOptions> {
  public:
@@ -841,6 +861,12 @@ class SpaceToDepth
   }
 
   int GetVersion(const OperatorSignature& op_signature) const override {
+    const string& input_name = op_signature.op->inputs[0];
+    const Array& input_array = op_signature.model->GetArray(input_name);
+    // If the op take int8 input, it is version 2.
+    if (input_array.data_type == ArrayDataType::kInt8) {
+      return 2;
+    }
     return 1;
   }
 };
@@ -2204,6 +2230,8 @@ std::vector<std::unique_ptr<BaseOperator>> BuildOperatorList(
                                  OperatorType::kFullyConnected));
   ops.push_back(MakeUnique<Gather>(::tflite::BuiltinOperator_GATHER,
                                    OperatorType::kGather));
+  ops.push_back(MakeUnique<GatherNd>(::tflite::BuiltinOperator_GATHER_ND,
+                                     OperatorType::kGatherNd));
   ops.push_back(
       MakeUnique<L2Normalization>(::tflite::BuiltinOperator_L2_NORMALIZATION,
                                   OperatorType::kL2Normalization));
@@ -2337,6 +2365,8 @@ std::vector<std::unique_ptr<BaseOperator>> BuildOperatorList(
       MakeUnique<SimpleOperator<TanhOperator>>("TANH", OperatorType::kTanh));
   ops.push_back(
       MakeUnique<SimpleOperator<ExpOperator>>("EXP", OperatorType::kExp));
+  ops.push_back(
+      MakeUnique<SimpleOperator<CosOperator>>("COS", OperatorType::kCos));
   ops.push_back(MakeUnique<SimpleOperator<LogSoftmaxOperator>>(
       "LOG_SOFTMAX", OperatorType::kLogSoftmax));
   ops.push_back(MakeUnique<Maximum>());  //  Element-wise Maximum

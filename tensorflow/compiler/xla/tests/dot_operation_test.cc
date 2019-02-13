@@ -1189,6 +1189,8 @@ std::vector<EinsumParamType> GetEinsumTestCases() {
       p{v{5, 6}, v{6, 7}, "ab,cd->dcba"},
       p{v{6}, v{6, 7}, "b,bc->c"},
       p{v{77}, v{77}, "a,a->a"},
+      p{v{77}, v{77, 55}, "a,ab->ba"},
+      p{v{2, 3, 77}, v{77, 2, 3, 55}, "ija,aijb->baij"},
       p{v{55}, v{}, "a,->a"},
       p{v{11, 111}, v{11}, "ab,a->ab"},
       p{v{16, 34}, v{16, 34}, "ab,ab->ab"},
@@ -1257,6 +1259,27 @@ ENTRY %test {
   %lhs = f32[8,64,96]{2,1,0} parameter(0)
   %rhs = f32[96,32,4]{2,1,0} parameter(1)
   ROOT %dot = f32[8,64,32,4]{3,2,1,0}  dot(%lhs, %rhs), lhs_contracting_dims={2}, rhs_contracting_dims={0}
+}
+)";
+
+  EXPECT_TRUE(RunAndCompare(hlo_string, ErrorSpec{4e-3, 4e-3}));
+}
+
+XLA_TEST_F(DotOperationTextTest, CachingBug) {
+  // Tests for a caching bug in the XLA CPU backend.
+  absl::string_view hlo_string =
+      R"(
+HloModule CachingBug
+
+ENTRY main {
+  lhs = f32[20,40] parameter(0)
+  rhs_0 = f32[40,1] parameter(2)
+  rhs_1 = f32[1,40] parameter(1)
+
+  dot_0 = f32[20,1] dot(lhs, rhs_0), lhs_contracting_dims={1}, rhs_contracting_dims={0}
+  dot_1 = f32[20,1] dot(lhs, rhs_1), lhs_contracting_dims={1}, rhs_contracting_dims={1}
+
+  ROOT result = f32[20,1] divide(dot_0, dot_1)
 }
 )";
 
