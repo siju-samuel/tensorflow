@@ -19,6 +19,7 @@ limitations under the License.
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/op_def.pb.h"
 #include "tensorflow/core/util/ptr_util.h"
+
 // TODO(ycling): Consider refactoring to extract the LSTM definition out of
 // graph_transformation module.
 #include "tensorflow/lite/schema/schema_generated.h"
@@ -199,6 +200,12 @@ class Add : public BuiltinOperator<AddOperator, ::tflite::AddOptions,
   }
 
   int GetVersion(const OperatorSignature& op_signature) const override {
+    const string& input_name = op_signature.op->inputs[0];
+    const Array& input_array = op_signature.model->GetArray(input_name);
+    // Version 2 supports signed int8 input types.
+    if (input_array.data_type == ArrayDataType::kInt8) {
+      return 2;
+    }
     return 1;
   }
 };
@@ -269,6 +276,12 @@ class Sub : public BuiltinOperator<SubOperator, ::tflite::SubOptions,
   }
 
   int GetVersion(const OperatorSignature& op_signature) const override {
+    const string& input_name = op_signature.op->inputs[0];
+    const Array& input_array = op_signature.model->GetArray(input_name);
+    // If the op take int8 input, it is version 2.
+    if (input_array.data_type == ArrayDataType::kInt8) {
+      return 2;
+    }
     return 1;
   }
 };
@@ -751,6 +764,12 @@ class Pad : public BuiltinOperator<PadOperator, ::tflite::PadOptions,
                    TocoOperator* op) const override {}
 
   int GetVersion(const OperatorSignature& op_signature) const override {
+    const string& input_name = op_signature.op->inputs[0];
+    const Array& input_array = op_signature.model->GetArray(input_name);
+    // If the op take int8 input, it is version 2.
+    if (input_array.data_type == ArrayDataType::kInt8) {
+      return 2;
+    }
     return 1;
   }
 };
@@ -788,6 +807,12 @@ class PadV2 : public BuiltinOperator<PadV2Operator, ::tflite::PadV2Options,
                    TocoOperator* op) const override {}
 
   int GetVersion(const OperatorSignature& op_signature) const override {
+    const string& input_name = op_signature.op->inputs[0];
+    const Array& input_array = op_signature.model->GetArray(input_name);
+    // If the op take int8 input, it is version 2.
+    if (input_array.data_type == ArrayDataType::kInt8) {
+      return 2;
+    }
     return 1;
   }
 };

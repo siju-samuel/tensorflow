@@ -213,7 +213,9 @@ BuiltinOpResolver::BuiltinOpResolver() {
              /* min_version */ 1,
              /* max_version */ 2);
   AddBuiltin(BuiltinOperator_CONCATENATION, Register_CONCATENATION());
-  AddBuiltin(BuiltinOperator_ADD, Register_ADD());
+  AddBuiltin(BuiltinOperator_ADD, Register_ADD(),
+             /* min_version */ 1,
+             /* max_version */ 2);
   AddBuiltin(BuiltinOperator_SPACE_TO_BATCH_ND, Register_SPACE_TO_BATCH_ND(),
              /* min_version */ 1,
              /* max_version */ 2);
@@ -232,8 +234,10 @@ BuiltinOpResolver::BuiltinOpResolver() {
   AddBuiltin(BuiltinOperator_UNIDIRECTIONAL_SEQUENCE_LSTM,
              Register_UNIDIRECTIONAL_SEQUENCE_LSTM(), /* min_version */ 1,
              /* max_version */ 2);
-  AddBuiltin(BuiltinOperator_PAD, Register_PAD());
-  AddBuiltin(BuiltinOperator_PADV2, Register_PADV2());
+  AddBuiltin(BuiltinOperator_PAD, Register_PAD(), /* min_version */ 1,
+             /* max_version */ 2);
+  AddBuiltin(BuiltinOperator_PADV2, Register_PADV2(), /* min_version */ 1,
+             /* max_version */ 2);
   AddBuiltin(BuiltinOperator_RESHAPE, Register_RESHAPE());
   AddBuiltin(BuiltinOperator_RESIZE_BILINEAR, Register_RESIZE_BILINEAR(),
              /* min_version */ 1,
@@ -254,7 +258,9 @@ BuiltinOpResolver::BuiltinOpResolver() {
              /* max_version */ 2);
   AddBuiltin(BuiltinOperator_MEAN, Register_MEAN());
   AddBuiltin(BuiltinOperator_DIV, Register_DIV());
-  AddBuiltin(BuiltinOperator_SUB, Register_SUB());
+  AddBuiltin(BuiltinOperator_SUB, Register_SUB(),
+             /* min_version */ 1,
+             /* max_version */ 2);
   AddBuiltin(BuiltinOperator_SPLIT, Register_SPLIT(), /* min_version */ 1,
              /* max_version */ 3);
   AddBuiltin(BuiltinOperator_SPLIT_V, Register_SPLIT_V());
