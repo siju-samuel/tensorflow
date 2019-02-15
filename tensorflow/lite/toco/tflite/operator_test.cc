@@ -154,6 +154,7 @@ TEST_F(OperatorTest, SimpleOperators) {
   CheckSimpleOperator<FillOperator>("FILL", OperatorType::kFill);
   CheckSimpleOperator<ReverseV2Operator>("REVERSE_V2",
                                          OperatorType::kReverseV2);
+  CheckSimpleOperator<TensorFlowRankOperator>("RANK", OperatorType::kRank);
 }
 
 TEST_F(OperatorTest, BuiltinAdd) {
@@ -818,6 +819,10 @@ TEST_F(OperatorTest, VersioningPackTest) {
 
 TEST_F(OperatorTest, VersioningBatchToSpaceNDTest) {
   SimpleVersioningTest<BatchToSpaceNDOperator>();
+}
+
+TEST_F(OperatorTest, VersioningTanhTest) {
+  SimpleVersioningTest<TanhOperator>();
 }
 
 TEST_F(OperatorTest, VersioningStridedSliceTest) {

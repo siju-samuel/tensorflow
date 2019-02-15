@@ -13,9 +13,8 @@ In your `BUILD` file, add the `TensorFlowLite` dependency:
 
 ```python
 swift_library(
-  # ...
   deps = [
-      "//tensorflow/lite/swift:TensorFlowLite",
+      "//tensorflow/lite/experimental/swift:TensorFlowLite",
   ],
 )
 ```
@@ -24,6 +23,29 @@ In your Swift files, import the module:
 
 ```swift
 import TensorFlowLite
+```
+
+If you would like to build the Swift TensorFlow Lite library using Bazel on Apple
+platforms, clone or download the [TensorFlow GitHub repo](https://github.com/tensorflow/tensorflow),
+then navigate to the root `tensorflow` directory and execute the `configure.py` script:
+
+```shell
+python configure.py
+```
+
+Follow the prompts and when asked to configure the Bazel rules for Apple
+platforms, enter `y`.
+
+Build the `TensorFlowLite` Swift library target:
+
+```shell
+bazel build tensorflow/lite/experimental/swift:TensorFlowLite
+```
+
+Build the `TensorFlowLiteTests` target:
+
+```shell
+bazel test tensorflow/lite/experimental/swift:TensorFlowLiteTests --swiftcopt=-enable-testing
 ```
 
 ### Tulsi

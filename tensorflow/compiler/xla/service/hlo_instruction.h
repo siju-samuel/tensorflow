@@ -47,6 +47,7 @@ limitations under the License.
 #include "tensorflow/compiler/xla/service/hlo_opcode.h"
 #include "tensorflow/compiler/xla/service/hlo_sharding.h"
 #include "tensorflow/compiler/xla/service/name_uniquer.h"
+#include "tensorflow/compiler/xla/shape_tree.h"
 #include "tensorflow/compiler/xla/types.h"
 #include "tensorflow/compiler/xla/xla_data.pb.h"
 #include "tensorflow/core/lib/core/status.h"
@@ -501,7 +502,7 @@ class HloInstruction {
   // Data is sent/received according to the (source_replica_id,
   // target_replica_id) pairs in `source_target_pairs`. If a replica id is not a
   // target_replica_id in any pair, the output on that replica is a tensor
-  // conssits of 0(s) in `shape`.
+  // consists of 0(s) in `shape`.
   static std::unique_ptr<HloInstruction> CreateCollectivePermute(
       const Shape& shape, HloInstruction* operand,
       const std::vector<std::pair<int64, int64>>& source_target_pairs);
@@ -1467,6 +1468,15 @@ class HloInstruction {
 
   // Delegates to HloParameterInstruction::parameter_number.
   int64 parameter_number() const;
+
+  // Delegates to
+  // HloParameterInstruction::set_parameter_replicated_at_leaf_buffers.
+  void set_parameter_replicated_at_leaf_buffers(
+      absl::Span<const bool> parameter_replicated_at_leaf_buffers);
+
+  // Delegates to HloParameterInstruction::parameter_replicated_at_leaf_buffers.
+  const absl::optional<std::vector<bool>>&
+  parameter_replicated_at_leaf_buffers() const;
 
   // Delegates to HloGetTupleElementInstruction::tuple_index.
   int64 tuple_index() const;
