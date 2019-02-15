@@ -529,6 +529,19 @@ class FunctionTest(test.TestCase, parameterized.TestCase):
     var_t = resource_variable_ops.read_variable_op(var_handle, dtype=v.dtype)
     self.assertEqual(var_t.shape, tensor_shape.TensorShape([2, 2]))
 
+  def testShapeInferenceForMoreSpecificInput(self):
+    self.skipTest('b/124219898')
+
+    def f(a):
+      return array_ops.reshape(a, [-1, 3])
+
+    signature = [tensor_spec.TensorSpec(None, dtypes.float32)]
+    compiled = def_function.function(f, input_signature=signature)
+
+    with ops.Graph().as_default():
+      inputs = array_ops.zeros([10, 10, 3])
+      self.assertAllEqual(f(inputs).shape, compiled(inputs).shape)
+
   def testFuncListAttr(self):
 
     @function.defun
@@ -1319,7 +1332,7 @@ class FunctionTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(func_b.numpy(), b)
     self.assertEqual(func_c.numpy(), c)
 
-  def testInputSignatureWithCompatibleInputs(self):
+  def testInputSignatureWithMatchingInputs(self):
 
     def foo(a):
       self.assertEqual(a.shape, (2,))
@@ -1353,22 +1366,46 @@ class FunctionTest(test.TestCase, parameterized.TestCase):
     self.assertLen(defined._function_cache, 1)
     self.assertAllEqual(out, b)
 
+  def testInputSignatureWithCompatibleInputs(self):
+
+    rank2_spec = tensor_spec.TensorSpec(shape=(None, None),
+                                        dtype=dtypes.float32)
+
+    @function.defun(input_signature=[rank2_spec])
+    def func(a):
+      self.assertEqual([None, None], a.shape.as_list())
+      return array_ops.shape(a)
+
+    self.assertAllEqual([3, 1], func([[0], [1.0], [1]]))
+    self.assertAllEqual([2, 2], func(numpy.array([[1, 1], [2, 2]])))
+
+    with self.assertRaisesRegexp(ValueError, 'incompatible'):
+      func([0.0, 1.0, 2.0])  # Wrong shape.
+
+    with self.assertRaisesRegexp(ValueError, 'incompatible'):
+      func([['wrong dtype']])
+
   def testNestedInputSignatures(self):
 
+    def expected_foo(a, b):
+      return [a, b]
+
+    @function.defun(input_signature=[
+        [tensor_spec.TensorSpec((2, None), dtypes.float32)] * 2,
+        tensor_spec.TensorSpec((1,), dtypes.float32),
+    ])
     def foo(a, b):
       self.assertEqual(a[0]._shape_tuple(), (2, None))
       self.assertEqual(a[1]._shape_tuple(), (2, None))
       self.assertEqual(b._shape_tuple(), (1,))
       return [a, b]
 
-    signature = [[tensor_spec.TensorSpec((2, None), dtypes.float32)] * 2,
-                 tensor_spec.TensorSpec((1,), dtypes.float32)]
-    defined = function.defun(foo, input_signature=signature)
     a = array_ops.ones([2, 1])
     b = array_ops.ones([1])
-    out = defined([a, a], b)
-    self.assertLen(defined._function_cache, 1)
-    nest.assert_same_structure(out, [[a, a], b])
+    expected = expected_foo([a, a], b)
+    out = foo([a, a], b)
+    self.assertLen(foo._function_cache, 1)
+    nest.assert_same_structure(out, expected)
     self.assertAllEqual(out[0][0], a)
     self.assertAllEqual(out[0][1], a)
     self.assertAllEqual(out[1], b)
@@ -1377,33 +1414,58 @@ class FunctionTest(test.TestCase, parameterized.TestCase):
     a = array_ops.ones([2, 3])
     b = array_ops.ones([2, 5])
     c = array_ops.ones([1])
-    out = defined([a, b], c)
-    self.assertLen(defined._function_cache, 1)
-    nest.assert_same_structure(out, [[a, b], c])
+    expected = expected_foo([a, b], c)
+    out = foo([a, b], c)
+    self.assertLen(foo._function_cache, 1)
+    nest.assert_same_structure(out, expected)
     self.assertAllEqual(out[0][0], a)
     self.assertAllEqual(out[0][1], b)
     self.assertAllEqual(out[1], c)
 
+    # Passing compatible inputs should work.
+    a = a.numpy().tolist()
+    b = b.numpy().tolist()
+    c = c.numpy().tolist()
+    out = foo([a, b], c)
+    self.assertLen(foo._function_cache, 1)
+    nest.assert_same_structure(out, expected)
+    self.assertAllEqual(out[0][0], a)
+    self.assertAllEqual(out[0][1], b)
+    self.assertAllEqual(out[1], c)
+
+  def testNestedInputSignaturesWithDict(self):
+    def expected_bar(a):
+      return a
+
+    @function.defun(input_signature=[{
+        'a': tensor_spec.TensorSpec((2, None), dtypes.float32),
+        'b': tensor_spec.TensorSpec((2, None), dtypes.float32),
+        'c': tensor_spec.TensorSpec((1,), dtypes.float32)}])
     def bar(a):
       self.assertEqual(a['a']._shape_tuple(), (2, None))
       self.assertEqual(a['b']._shape_tuple(), (2, None))
       self.assertEqual(a['c']._shape_tuple(), (1,))
       return a
 
-    signature = [{
-        'a': tensor_spec.TensorSpec((2, None), dtypes.float32),
-        'b': tensor_spec.TensorSpec((2, None), dtypes.float32),
-        'c': tensor_spec.TensorSpec((1,), dtypes.float32)
-    }]
     a = array_ops.ones([2, 3])
     b = array_ops.ones([1])
     inputs = {'a': a, 'b': a, 'c': b}
-    defined = def_function.function(bar, input_signature=signature)
-    out = defined(inputs)
-    nest.assert_same_structure(out, inputs)
-    self.assertAllEqual(out['a'], inputs['a'])
-    self.assertAllEqual(out['b'], inputs['b'])
-    self.assertAllEqual(out['c'], inputs['c'])
+    expected = expected_bar(inputs)
+    out = bar(inputs)
+    nest.assert_same_structure(out, expected)
+    self.assertAllEqual(out['a'], expected['a'])
+    self.assertAllEqual(out['b'], expected['b'])
+    self.assertAllEqual(out['c'], expected['c'])
+
+    # Passing compatible inputs should work.
+    a = a.numpy().tolist()
+    b = b.numpy().tolist()
+    inputs = {'a': a, 'b': a, 'c': b}
+    out = bar(inputs)
+    nest.assert_same_structure(out, expected)
+    self.assertAllEqual(out['a'], expected['a'])
+    self.assertAllEqual(out['b'], expected['b'])
+    self.assertAllEqual(out['c'], expected['c'])
 
   def testInputSignatureMustBeSequenceOfTensorSpecs(self):
 
@@ -1439,9 +1501,7 @@ class FunctionTest(test.TestCase, parameterized.TestCase):
       defined(array_ops.ones([2, 1]))
 
     # Wrong number of arguments.
-    with self.assertRaisesRegexp(
-        ValueError,
-        'Arguments and signature arguments do not match.*'):
+    with self.assertRaisesRegexp(TypeError, 'Received 2 argument\(s\)'):
       defined(array_ops.ones([2]), array_ops.ones([2]))
     with self.assertRaisesRegexp(ValueError,
                                  'Structure of Python function inputs.*'):
@@ -1471,6 +1531,25 @@ class FunctionTest(test.TestCase, parameterized.TestCase):
       defined([a], [a, a, a])
     defined([a, a], [a, a])
 
+  def testUnderspecifiedInputSignature(self):
+    @function.defun(input_signature=[
+        tensor_spec.TensorSpec([], dtypes.float32),
+    ])
+    def foo(a, training=True):
+      if training:
+        return a
+      else:
+        return -1.0 * a
+
+    x = constant_op.constant(1.0)
+    with self.assertRaisesRegexp(TypeError, 'only pass arguments'):
+      foo(x, training=True)
+
+    with self.assertRaisesRegexp(TypeError, 'only pass arguments'):
+      foo(x, training=False)
+
+    self.assertAllEqual(x.numpy(), foo(x).numpy())
+
   def testInputSignatureWithPartialFunction(self):
     self.skipTest('b/124441704')
     def full_function(a, b, c=3.0):
@@ -1486,7 +1565,7 @@ class FunctionTest(test.TestCase, parameterized.TestCase):
     self.assertEqual(func_b.numpy(), b)
     self.assertEqual(func_c.numpy(), c)
 
-  def testInputSignatureForFunctionWithNonTensorInputsNotAllowed(self):
+  def testInputSignatureConversionWithDefaultArg(self):
 
     def foo(a, training=True):
       if training:
@@ -1500,11 +1579,9 @@ class FunctionTest(test.TestCase, parameterized.TestCase):
     ]
     defined = def_function.function(foo, input_signature=signature)
     a = constant_op.constant(1.0)
-    with self.assertRaisesRegexp(
-        ValueError,
-        'When input_signature is provided, all inputs to '
-        'the Python function must be Tensors.'):
-      defined(a, training=True)
+    self.assertAllEqual(a.numpy(), defined(a))
+    self.assertAllEqual(a.numpy(), defined(a, training=True))
+    self.assertAllEqual(-a.numpy(), defined(a, training=False))
 
   def testInputSignatureWithKeywordPositionalArgs(self):
 
