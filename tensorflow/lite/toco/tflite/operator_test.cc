@@ -248,6 +248,13 @@ TEST_F(OperatorTest, BuiltinGatherNd) {
   ASSERT_NE(output_toco_op.get(), nullptr);
 }
 
+TEST_F(OperatorTest, BuiltinWhere) {
+  WhereOperator op;
+  auto output_toco_op =
+      SerializeAndDeserialize(GetOperator("WHERE", OperatorType::kWhere), op);
+  ASSERT_NE(output_toco_op.get(), nullptr);
+}
+
 TEST_F(OperatorTest, BuiltinL2Pool) {
   L2PoolOperator op;
   op.stride_width = 123;
@@ -840,6 +847,8 @@ TEST_F(OperatorTest, VersioningSliceTest) {
 TEST_F(OperatorTest, VersioningAddTest) { SimpleVersioningTest<AddOperator>(); }
 
 TEST_F(OperatorTest, VersioningSubTest) { SimpleVersioningTest<SubOperator>(); }
+
+TEST_F(OperatorTest, VersioningMulTest) { SimpleVersioningTest<MulOperator>(); }
 
 TEST_F(OperatorTest, VersioningPadTest) { SimpleVersioningTest<PadOperator>(); }
 
