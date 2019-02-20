@@ -240,6 +240,9 @@ if [[ -z "${PY_MAJOR_MINOR_VER}" ]]; then
 fi
 echo "Python binary path to be used in PIP install: ${PYTHON_BIN_PATH} "\
 "(Major.Minor version: ${PY_MAJOR_MINOR_VER})"
+PYTHON_BIN_PATH_INIT=${PYTHON_BIN_PATH}
+PIP_BIN_PATH="$(which pip${PYTHON_VER_CFG})"
+PIP_BIN_PATH_INIT=${PIP_BIN_PATH}
 
 # PIP packages
 INSTALL_EXTRA_PIP_PACKAGES=${TF_BUILD_INSTALL_EXTRA_PIP_PACKAGES}
@@ -425,7 +428,7 @@ create_activate_virtualenv() {
   # Use the virtualenv from the default python version (i.e., python-virtualenv)
   # to create the virtualenv directory for testing. Use the -p flag to specify
   # the python version inside the to-be-created virtualenv directory.
-  ${PYTHON_BIN_PATH} -m virtualenv -p ${PYTHON_BIN_PATH} ${VIRTUALENV_FLAGS} ${VIRTUALENV_DIR} || \
+  ${PYTHON_BIN_PATH_INIT} -m virtualenv -p ${PYTHON_BIN_PATH_INIT} ${VIRTUALENV_FLAGS} ${VIRTUALENV_DIR} || \
     die "FAILED: Unable to create virtualenv"
 
   source "${VIRTUALENV_DIR}/bin/activate" || \
@@ -496,7 +499,7 @@ run_test_with_bazel() {
   TEST_ROOT=$(pwd)/${PIP_TEST_PREFIX}
   sudo rm -rf $TEST_ROOT
   mkdir -p $TEST_ROOT
-  ln -s $(pwd)/tensorflow ${TEST_ROOT}/tensorflow
+  ln -s $(pwd)/tensorflow $TEST_ROOT/tensorflow
 
   if [[ "${IS_OSS_SERIAL}" == "1" ]]; then
     remove_test_filter_tag -no_oss
@@ -535,15 +538,9 @@ run_test_with_bazel() {
     BAZEL_PARALLEL_TEST_FLAGS="--local_test_jobs=1"
   fi
 
-  TEST_TARGETS_LN=""
-  for TARGET in ${BAZEL_TEST_TARGETS[@]}; do
-    TARGET_RE="$(echo ${TARGET} | sed -e 's/\/\//\/${TEST_ROOT}\//g')"
-    TEST_TARGETS_LN+="${TARGET_RE} "
-  done
-  echo "Test targets (symlink): ${TEST_TARGETS_LN}"
-
+  # TODO(hyey): Update test target after validation.
   # Run the test.
-  bazel test --build_tests_only ${BAZEL_BUILD_FLAGS} ${BAZEL_PARALLEL_TEST_FLAGS} --test_tag_filters=${BAZEL_TEST_FILTER_TAGS} -k -- ${TEST_TARGETS_LN}
+  bazel test --build_tests_only ${BAZEL_BUILD_FLAGS} ${BAZEL_PARALLEL_TEST_FLAGS} --test_tag_filters=${BAZEL_TEST_FILTER_TAGS} -k -- //$PIP_TEST_PREFIX/tensorflow/python/...
 
   unlink ${TEST_ROOT}/tensorflow
 }

@@ -25,6 +25,7 @@ TfLiteRegistration* Register_AUDIO_SPECTROGRAM();
 TfLiteRegistration* Register_MFCC();
 TfLiteRegistration* Register_DETECTION_POSTPROCESS();
 TfLiteRegistration* Register_IF();
+TfLiteRegistration* Register_WHILE();
 
 }  // namespace custom
 
@@ -276,7 +277,9 @@ BuiltinOpResolver::BuiltinOpResolver() {
              /* min_version */ 1,
              /* max_version */ 2);
   AddBuiltin(BuiltinOperator_LOG, Register_LOG());
-  AddBuiltin(BuiltinOperator_LOG_SOFTMAX, Register_LOG_SOFTMAX());
+  AddBuiltin(BuiltinOperator_LOG_SOFTMAX, Register_LOG_SOFTMAX(),
+             /* min_version */ 1,
+             /* max_version */ 2);
   AddBuiltin(BuiltinOperator_CAST, Register_CAST());
   AddBuiltin(BuiltinOperator_DEQUANTIZE, Register_DEQUANTIZE(),
              /* min_version */ 1,
@@ -374,6 +377,7 @@ BuiltinOpResolver::BuiltinOpResolver() {
 
   // WARNING: Control flow ops are experimental and subject to change.
   AddCustom("Experimental_If", tflite::ops::custom::Register_IF());
+  AddCustom("Experimental_While", tflite::ops::custom::Register_WHILE());
 }
 
 }  // namespace builtin
