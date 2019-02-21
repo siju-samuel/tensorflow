@@ -522,10 +522,10 @@ def func_graph_from_py_func(name,
                            capture_by_value=capture_by_value)
   assert isinstance(func_graph, FuncGraph)
   if add_control_dependencies:
-    control_manager = AutomaticControlDependencies
+    control_manager = AutomaticControlDependencies()
   else:
-    control_manager = ops.NullContextmanager
-  with func_graph.as_default(), control_manager() as a:
+    control_manager = ops.NullContextmanager()
+  with func_graph.as_default(), control_manager as a:
     current_scope = variable_scope.get_variable_scope()
     default_use_recource = current_scope.use_resource
     current_scope.set_use_resource(True)
@@ -649,12 +649,13 @@ def func_graph_from_py_func(name,
         func_graph.capture(x)
         for x in flatten(func_graph.structured_outputs)
         if x is not None)
-    if add_control_dependencies:
-      func_graph.control_outputs.extend(a.ops_which_must_run)
 
     func_graph.variables = variables
 
-  # Register any other functions defined in the graph.
+  if add_control_dependencies:
+    func_graph.control_outputs.extend(control_manager.ops_which_must_run)
+
+# Register any other functions defined in the graph.
   with ops.init_scope():
     if context.executing_eagerly():
       for f in func_graph._functions.values():  # pylint: disable=protected-access
@@ -788,9 +789,15 @@ def _get_defun_inputs(flat_args, names, structure):
           requested_name = arg.name
         else:
           requested_name = name
-        placeholder = graph_placeholder(
-            arg.dtype, arg.shape,
-            name=requested_name)
+
+        try:
+          placeholder = graph_placeholder(
+              arg.dtype, arg.shape,
+              name=requested_name)
+        except ValueError:
+          # Sometimes parameter names are not valid op names, so fall back to
+          # unnamed placeholders.
+          placeholder = graph_placeholder(arg.dtype, arg.shape)
         if name is not None:
           # Record the requested/user-specified name in case it's different than
           # the uniquified name, for validation when exporting signatures.
