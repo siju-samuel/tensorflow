@@ -859,6 +859,21 @@ tf_py_test(
 )
 
 tf_py_test(
+    name = "time_distributed_learning_phase_test",
+    size = "small",
+    srcs = ["layers/time_distributed_learning_phase_test.py"],
+    additional_deps = [
+        ":keras",
+        "//third_party/py/numpy",
+        "//tensorflow/python:client_testlib",
+    ],
+    tags = [
+        "noasan",  # http://b/78599823
+        "notsan",
+    ],
+)
+
+tf_py_test(
     name = "scikit_learn_test",
     size = "small",
     srcs = ["wrappers/scikit_learn_test.py"],
@@ -1114,6 +1129,20 @@ tf_py_test(
         "//tensorflow/python:client_testlib",
     ],
     shard_count = 4,
+)
+
+tf_py_test(
+    name = "training_arrays_test",
+    size = "small",
+    srcs = ["engine/training_arrays_test.py"],
+    additional_deps = [
+        ":keras",
+        ":layers",
+        "@absl_py//absl/testing:parameterized",
+        "//third_party/py/numpy",
+        "//tensorflow/python/data/ops:dataset_ops",
+        "//tensorflow/python:client_testlib",
+    ],
 )
 
 tf_py_test(
