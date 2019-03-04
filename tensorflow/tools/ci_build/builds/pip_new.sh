@@ -538,9 +538,15 @@ run_test_with_bazel() {
     BAZEL_PARALLEL_TEST_FLAGS="--local_test_jobs=1"
   fi
 
-  # TODO(hyey): Update test target after validation.
+  TEST_TARGETS_SYMLINK=""
+  for TARGET in ${BAZEL_TEST_TARGETS[@]}; do
+    TARGET_NEW=$(echo ${TARGET} | sed -e "s/\/\//\/\/${PIP_TEST_PREFIX}\//g")
+    TEST_TARGETS_SYMLINK+="${TARGET_NEW} "
+  done
+  echo "Test targets (symlink): ${TEST_TARGETS_SYMLINK}"
+
   # Run the test.
-  bazel test --build_tests_only ${BAZEL_TEST_FLAGS} ${BAZEL_PARALLEL_TEST_FLAGS} --test_tag_filters=${BAZEL_TEST_FILTER_TAGS} -k -- //$PIP_TEST_PREFIX/tensorflow/python/...
+  bazel test --build_tests_only ${BAZEL_TEST_FLAGS} ${BAZEL_PARALLEL_TEST_FLAGS} --test_tag_filters=${BAZEL_TEST_FILTER_TAGS} -k -- ${TEST_TARGETS_SYMLINK}
 
   unlink ${TEST_ROOT}/tensorflow
 }
@@ -625,13 +631,13 @@ fi
 
 ./bazel-bin/tensorflow/tools/pip_package/build_pip_package ${PIP_WHL_DIR} ${GPU_FLAG} ${NIGHTLY_FLAG} "--project_name" ${PROJECT_NAME} || die "build_pip_package FAILED"
 
-PY_MAJOR_MINOR_VER=$(echo $PY_MAJOR_MINOR_VER | tr -d '.')
-if [[ $PY_MAJOR_MINOR_VER == "2" ]]; then
-  PY_MAJOR_MINOR_VER="27"
+PY_DOTLESS_MAJOR_MINOR_VER=$(echo $PY_MAJOR_MINOR_VER | tr -d '.')
+if [[ $PY_DOTLESS_MAJOR_MINOR_VER == "2" ]]; then
+  PY_DOTLESS_MAJOR_MINOR_VER="27"
 fi
 
 # Set wheel path and verify that there is only one .whl file in the path.
-WHL_PATH=$(ls "${PIP_WHL_DIR}"/"${PROJECT_NAME}"-*"${PY_MAJOR_MINOR_VER}"*"${PY_MAJOR_MINOR_VER}"*.whl)
+WHL_PATH=$(ls "${PIP_WHL_DIR}"/"${PROJECT_NAME}"-*"${PY_DOTLESS_MAJOR_MINOR_VER}"*"${PY_DOTLESS_MAJOR_MINOR_VER}"*.whl)
 if [[ $(echo "${WHL_PATH}" | wc -w) -ne 1 ]]; then
   echo "ERROR: Failed to find exactly one built TensorFlow .whl file in "\
   "directory: ${PIP_WHL_DIR}"
