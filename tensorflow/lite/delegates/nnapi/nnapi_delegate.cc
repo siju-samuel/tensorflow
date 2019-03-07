@@ -107,6 +107,13 @@ struct NNFreeCompilation {
   }
 };
 
+// RAII NN API Execution Destructor for use with std::unique_ptr
+struct NNFreeExecution {
+  void operator()(ANeuralNetworksExecution* execution) {
+    NnApiImplementation()->ANeuralNetworksExecution_free(execution);
+  }
+};
+
 // Manage NNAPI shared memory handle
 class NNMemory {
  public:
@@ -971,7 +978,7 @@ class NNAPIDelegateKernel {
     }
 
     if (!nn_model_) {
-      ANeuralNetworksModel* model;
+      ANeuralNetworksModel* model = nullptr;
       RETURN_TFLITE_ERROR_IF_NN_ERROR(
           context, nnapi_->ANeuralNetworksModel_create(&model));
       nn_model_.reset(model);
@@ -981,12 +988,17 @@ class NNAPIDelegateKernel {
     }
 
     if (!nn_compilation_) {
-      ANeuralNetworksCompilation* compilation;
+      ANeuralNetworksCompilation* compilation = nullptr;
       RETURN_TFLITE_ERROR_IF_NN_ERROR(
           context, nnapi_->ANeuralNetworksCompilation_create(nn_model_.get(),
                                                              &compilation));
-      RETURN_TFLITE_ERROR_IF_NN_ERROR(
-          context, nnapi_->ANeuralNetworksCompilation_finish(compilation));
+      const int finish_result =
+          nnapi_->ANeuralNetworksCompilation_finish(compilation);
+      if (finish_result != ANEURALNETWORKS_NO_ERROR) {
+        nnapi_->ANeuralNetworksCompilation_free(compilation);
+        compilation = nullptr;
+      }
+      RETURN_TFLITE_ERROR_IF_NN_ERROR(context, finish_result);
       nn_compilation_.reset(compilation);
     }
     return kTfLiteOk;
@@ -997,6 +1009,8 @@ class NNAPIDelegateKernel {
     RETURN_TFLITE_ERROR_IF_NN_ERROR(
         context, nnapi_->ANeuralNetworksExecution_create(nn_compilation_.get(),
                                                          &execution));
+    std::unique_ptr<ANeuralNetworksExecution, NNFreeExecution>
+        execution_unique_ptr(execution);
 
     // Set the input tensor buffers. Note: we access tflite tensors using
     // absolute indices but NN api indices inputs by relative indices.
@@ -1053,14 +1067,19 @@ class NNAPIDelegateKernel {
       relative_output_index++;
     }
     // Invoke ANN in blocking fashion.
-    ANeuralNetworksEvent* event = nullptr;
-    RETURN_TFLITE_ERROR_IF_NN_ERROR(
-        context,
-        nnapi_->ANeuralNetworksExecution_startCompute(execution, &event));
-    RETURN_TFLITE_ERROR_IF_NN_ERROR(context,
-                                    nnapi_->ANeuralNetworksEvent_wait(event));
-    nnapi_->ANeuralNetworksEvent_free(event);
-    nnapi_->ANeuralNetworksExecution_free(execution);
+    if (nnapi_->android_sdk_version < kMinSdkVersionForNNAPI12) {
+      ANeuralNetworksEvent* event = nullptr;
+      RETURN_TFLITE_ERROR_IF_NN_ERROR(
+          context,
+          nnapi_->ANeuralNetworksExecution_startCompute(execution, &event));
+      const int wait_result = nnapi_->ANeuralNetworksEvent_wait(event);
+      nnapi_->ANeuralNetworksEvent_free(event);
+      RETURN_TFLITE_ERROR_IF_NN_ERROR(context, wait_result);
+    } else {
+      // Use synchronous execution for NNAPI 1.2+.
+      RETURN_TFLITE_ERROR_IF_NN_ERROR(
+          context, nnapi_->ANeuralNetworksExecution_compute(execution));
+    }
 
     // copy results from shared memory to the destination.
     output_offset = 0;
@@ -1257,7 +1276,6 @@ class NNAPIDelegateKernel {
 TfLiteDelegate* NnApiDelegate() {
   static TfLiteDelegate delegate = {
       .data_ = nullptr,
-      .flags = kTfLiteDelegateFlagsNone,
       .Prepare = [](TfLiteContext* context,
                     TfLiteDelegate* delegate) -> TfLiteStatus {
         // Do not check nodes_ if NN API is unavailable.
@@ -1323,6 +1341,7 @@ TfLiteDelegate* NnApiDelegate() {
               return state->Invoke(context, node);
             },
 
+            .profiling_string = nullptr,
             .builtin_code = kTfLiteBuiltinDelegate,
         };
 
@@ -1332,7 +1351,13 @@ TfLiteDelegate* NnApiDelegate() {
             context, nnapi_delegate_kernel,
             reinterpret_cast<TfLiteIntArray*>(supported_nodes.data()),
             delegate);
-      }};
+      },
+
+      .CopyFromBufferHandle = nullptr,
+      .CopyToBufferHandle = nullptr,
+      .FreeBufferHandle = nullptr,
+      .flags = kTfLiteDelegateFlagsNone,
+  };
 
   return &delegate;
 }
