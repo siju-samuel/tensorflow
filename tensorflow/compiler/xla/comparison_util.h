@@ -13,20 +13,30 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-// This include can't be in the conv_ops_fused_impl.h headers. See b/62899350.
-#if GOOGLE_CUDA
-#include "tensorflow/core/protobuf/autotuning.pb.h"
-#endif  // GOOGLE_CUDA
-#include "tensorflow/core/kernels/conv_ops_fused_impl.h"
+#ifndef TENSORFLOW_COMPILER_XLA_COMPARISON_UTIL_H_
+#define TENSORFLOW_COMPILER_XLA_COMPARISON_UTIL_H_
 
-namespace tensorflow {
+#include "absl/base/macros.h"
+#include "tensorflow/compiler/xla/statusor.h"
+#include "tensorflow/compiler/xla/types.h"
 
-#if GOOGLE_CUDA
+namespace xla {
 
-namespace functor {
-DECLARE_FUNCTOR_GPU_SPEC(Eigen::half);
-}  // namespace functor
+// Represents different comparison operations.
+enum class ComparisonDirection : uint8 {
+  kEq,
+  kNe,
+  kGe,
+  kGt,
+  kLe,
+  kLt,
+};
 
-#endif  // GOOGLE_CUDA
+string ComparisonDirectionToString(ComparisonDirection direction);
 
-}  // namespace tensorflow
+StatusOr<ComparisonDirection> StringToComparisonDirection(
+    absl::string_view direction_name);
+
+}  // namespace xla
+
+#endif  // TENSORFLOW_COMPILER_XLA_COMPARISON_UTIL_H_
