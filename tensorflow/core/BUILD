@@ -1629,8 +1629,8 @@ cc_library(
     srcs = ["common_runtime/testlib_ops.cc"],
     linkstatic = 1,  # Seems to be needed since alwayslink is broken in bazel
     deps = [
-        "//tensorflow/core:framework",
-        "//tensorflow/core:lib",
+        ":framework",
+        ":lib",
     ],
     alwayslink = 1,
 )
@@ -3145,6 +3145,7 @@ tf_cuda_library(
         ":lib_internal",
         ":proto_text",
         ":protos_all_cc",
+        "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
         "//third_party/eigen3",
