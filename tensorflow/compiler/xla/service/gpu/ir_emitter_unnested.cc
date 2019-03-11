@@ -907,7 +907,6 @@ Status IrEmitterUnnested::HandleSelectAndScatter(
     // potentially update the selected value and index with the currently
     // visiting operand.
     llvm_ir::SetToFirstInsertPoint(if_initialized.true_block, &b_);
-    const Shape output_shape = ShapeUtil::MakeShape(PRED, {});
     llvm::Value* operand_address =
         operand_array.EmitArrayElementAddress(operand_index, &b_);
     llvm::Value* select_return_buffer = llvm_ir::EmitAllocaAtFunctionEntry(
@@ -939,15 +938,18 @@ Status IrEmitterUnnested::HandleSelectAndScatter(
     // value and the current output value.
     llvm_ir::SetToFirstInsertPoint(window_loops.GetOuterLoopExitBasicBlock(),
                                    &b_);
-    IrArray::Index selected_index(operand_index.GetType());
+    std::vector<llvm::Value*> selected_multi_index;
     for (int64 i = 0; i < rank; ++i) {
       llvm::Value* selected_index_address_slot =
           InBoundsGEP(selected_index_address, {b_.getInt32(i)});
-      selected_index.push_back(Load(selected_index_address_slot));
+      selected_multi_index.push_back(Load(selected_index_address_slot));
     }
     llvm::Value* source_value_address =
         GetIrArray(*source, *select_and_scatter)
             .EmitArrayElementAddress(source_index, &b_);
+    IrArray::Index selected_index(selected_multi_index, /*linear=*/nullptr,
+                                  select_and_scatter->shape(),
+                                  operand_index.GetType());
     llvm::Value* output_value_address =
         GetIrArray(*select_and_scatter, *select_and_scatter)
             .EmitArrayElementAddress(selected_index, &b_);
@@ -1125,16 +1127,21 @@ Status IrEmitterUnnested::EmitScatter(
 
     // Now load the indices corresponding to the current window from
     // scatter_indices.
-    llvm_ir::IrArray::Index raw_scatter_index_index(input_scatter_multidim,
-                                                    index.GetType());
-    raw_scatter_index_index.InsertAt(dim_numbers.index_vector_dim(), nullptr);
+    std::vector<llvm::Value*> raw_scatter_index_multidim =
+        input_scatter_multidim;
+    raw_scatter_index_multidim.insert(
+        raw_scatter_index_multidim.begin() + dim_numbers.index_vector_dim(),
+        nullptr);
     llvm::Value* is_in_bounds = b_.getTrue();
     for (int64 i = 0, e = dim_numbers.scatter_dims_to_operand_dims_size();
          i != e; ++i) {
       // Our index is stored along index_vector_dim, insert that into the lookup
       // index into scatter_indices.
-      raw_scatter_index_index[dim_numbers.index_vector_dim()] =
-          raw_scatter_index_index.GetConstantWithIndexType(i);
+      raw_scatter_index_multidim[dim_numbers.index_vector_dim()] =
+          index.GetConstantWithIndexType(i);
+      llvm_ir::IrArray::Index raw_scatter_index_index(
+          raw_scatter_index_multidim, /*linear=*/nullptr, scatter_indices_shape,
+          index.GetType());
 
       int64 operand_dim = dim_numbers.scatter_dims_to_operand_dims(i);
       TF_ASSIGN_OR_RETURN(
