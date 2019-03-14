@@ -18,6 +18,7 @@ limitations under the License.
 
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
+#include "tensorflow/core/framework/attr_value.pb.h"
 #include "tensorflow/core/framework/graph.pb.h"
 #include "tensorflow/core/framework/node_def.pb.h"
 #include "tensorflow/core/framework/op.h"
@@ -70,30 +71,43 @@ REGISTER_OP("In16Out1")
 
 GraphDef CreateGraphDef(int num_nodes, int num_edges_per_node) {
   const int kNumInNodes = 10 * num_edges_per_node;
-  string s;
-  for (int in = 0; in < kNumInNodes; in++) {
-    s += absl::PrintF("node { name: 'in%04d' op: 'Input' }", in);
+  GraphDef graph_def;
+
+  auto create_node = [](const string& name, const string& op) {
+    NodeDef node;
+    node.set_name(name);
+    node.set_op(op);
+    return node;
+  };
+
+  NodeDef node;
+  for (int in = 0; in < kNumInNodes; ++in) {
+    node = create_node(/*name=*/absl::StrFormat("in%04d", in), /*op=*/"Input");
+    *graph_def.add_node() = std::move(node);
   }
+
   random::PhiloxRandom philox(301, 17);
   random::SimplePhilox rnd(&philox);
-  for (int op = 0; op < num_nodes; op++) {
-    s += absl::PrintF("node { name: 'op%05d' op: 'In%dOut1' input: [ ", op,
-                      num_edges_per_node);
-    for (int edge = 0; edge < num_edges_per_node - 1; ++edge) {
-      s += absl::PrintF("'in%04d', ", rnd.Uniform(kNumInNodes));
+  for (int op = 0; op < num_nodes; ++op) {
+    node = create_node(/*name=*/absl::StrFormat("op%05d", op),
+                       /*op=*/absl::StrFormat("In%dOut1", num_edges_per_node));
+    for (int edge = 0; edge < num_edges_per_node; ++edge) {
+      node.add_input(absl::StrFormat("in%04d", rnd.Uniform(kNumInNodes)));
     }
-    s += absl::PrintF("'in%04d' ] } ", rnd.Uniform(kNumInNodes));
+    *graph_def.add_node() = std::move(node);
   }
+
   // Add a single sink node. Otherwise a lot of time is spent in
   // FixupSourceAndSinkEdges().
-  s += absl::PrintF("node { name: 'out' op: 'Output' input: [ ");
-  for (int op = 0; op < num_nodes - 1; op++) {
-    s += absl::PrintF("'op%05d', ", op);
+  node = create_node(/*name=*/"out", /*op=*/"Output");
+  for (int op = 0; op < num_nodes; ++op) {
+    node.add_input(absl::StrFormat("op%05d", op));
   }
-  s += absl::PrintF("'op%05d' ], attr: { key: 'N' value { i: %d } } } ",
-                    num_nodes - 1, num_nodes);
-  GraphDef graph_def;
-  CHECK(protobuf::TextFormat::ParseFromString(s, &graph_def));
+  AttrValue attr;
+  attr.set_i(num_nodes);
+  node.mutable_attr()->insert({"N", std::move(attr)});
+  *graph_def.add_node() = std::move(node);
+
   return graph_def;
 }
 
@@ -117,6 +131,35 @@ GraphDef CreateRandomGraph(int size) {
 
     *graph.add_node() = std::move(node);
   }
+
+  return graph;
+}
+
+GraphDef CreateFaninFanoutNodeGraph(int num_fanins, int num_fanouts) {
+  GraphDef graph;
+
+  auto create_node = [](const string& name) {
+    NodeDef node;
+    node.set_name(name);
+    return node;
+  };
+
+  NodeDef node = create_node(/*name=*/"node");
+
+  for (int i = 0; i < num_fanins; ++i) {
+    const string input_node_name = absl::StrFormat("in%05d", i);
+    NodeDef input_node = create_node(/*name=*/input_node_name);
+    *graph.add_node() = std::move(input_node);
+    node.add_input(input_node_name);
+  }
+
+  for (int i = 0; i < num_fanouts; ++i) {
+    NodeDef output_node = create_node(/*name=*/absl::StrFormat("out%05d", i));
+    output_node.add_input(absl::StrCat(node.name(), ":", i));
+    *graph.add_node() = std::move(output_node);
+  }
+
+  *graph.add_node() = std::move(node);
 
   return graph;
 }
