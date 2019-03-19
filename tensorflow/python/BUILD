@@ -3746,6 +3746,7 @@ cuda_py_test(
     ],
     shard_count = 16,
     tags = ["no_rocm"],
+    xla_enable_strict_auto_jit = True,
 )
 
 cuda_py_test(
@@ -5574,6 +5575,7 @@ cuda_py_test(
     ],
     main = "layers/normalization_test.py",
     shard_count = 10,
+    xla_enable_strict_auto_jit = True,
 )
 
 # -----------------------------------------------------------------------------
