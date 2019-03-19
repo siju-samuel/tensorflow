@@ -1020,8 +1020,10 @@ cuda_py_test(
         ":constant_op",
         ":client_testlib",
         ":platform",
+        ":test_ops",
         ":util",
     ],
+    tags = ["no_pip"],  # test_ops are not available in pip.
     xla_enable_strict_auto_jit = True,
 )
 
@@ -2990,6 +2992,7 @@ cuda_py_test(
         ":client_testlib",
         ":logging_ops",
         ":random_ops_gen",
+        "//tensorflow/python/kernel_tests/random:util",
     ],
     xla_enable_strict_auto_jit = True,
 )
