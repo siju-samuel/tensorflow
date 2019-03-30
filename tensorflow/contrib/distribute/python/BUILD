@@ -369,6 +369,7 @@ distribute_py_test(
         "//tensorflow/python/distribute:strategy_combinations",
         "//tensorflow/python/eager:context",
         "//tensorflow/python/eager:test",
+        "//tensorflow/python/keras/optimizer_v2",
         "//tensorflow/python/ops/losses",
         "//third_party/py/numpy",
         "@absl_py//absl/testing:parameterized",
@@ -494,6 +495,7 @@ py_library(
         "//tensorflow/python:layers",
         "//tensorflow/python:math_ops",
         "//tensorflow/python/data/ops:dataset_ops",
+        "//tensorflow/python/keras/optimizer_v2",
     ],
 )
 
@@ -605,6 +607,8 @@ py_library(
         "//tensorflow/python/eager:test",
         "//tensorflow/python/estimator:estimator_py",
         "//tensorflow/python/keras",
+        "//tensorflow/python/keras/distribute",
+        "//tensorflow/python/keras/distribute:distribute_strategy_test_lib",
         "//third_party/py/numpy",
         "@absl_py//absl/testing:parameterized",
     ],
@@ -623,7 +627,7 @@ distribute_py_test(
     ],
     deps = [
         ":keras_test_lib",
-        "//tensorflow/python/keras:distribute_strategy_test",
+        "//tensorflow/python/keras/distribute:distribute_strategy_test_lib",
     ],
 )
 
