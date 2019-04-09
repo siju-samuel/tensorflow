@@ -8552,6 +8552,26 @@ func MakeIterator(scope *Scope, dataset tf.Output, iterator tf.Output) (o *tf.Op
 // Returns A handle to the iterator that can be passed to a "MakeIterator" or
 // "IteratorGetNext" op. In contrast to Iterator, AnonymousIterator prevents
 // resource sharing by name, and does not keep a reference to the resource
+// container.A variant deleter that should be passed into the op that deletes the iterator.
+func AnonymousIteratorV2(scope *Scope, output_types []tf.DataType, output_shapes []tf.Shape) (handle tf.Output, deleter tf.Output) {
+	if scope.Err() != nil {
+		return
+	}
+	attrs := map[string]interface{}{"output_types": output_types, "output_shapes": output_shapes}
+	opspec := tf.OpSpec{
+		Type: "AnonymousIteratorV2",
+
+		Attrs: attrs,
+	}
+	op := scope.AddOperation(opspec)
+	return op.Output(0), op.Output(1)
+}
+
+// A container for an iterator resource.
+//
+// Returns A handle to the iterator that can be passed to a "MakeIterator" or
+// "IteratorGetNext" op. In contrast to Iterator, AnonymousIterator prevents
+// resource sharing by name, and does not keep a reference to the resource
 // container.
 func AnonymousIterator(scope *Scope, output_types []tf.DataType, output_shapes []tf.Shape) (handle tf.Output) {
 	if scope.Err() != nil {
@@ -22639,6 +22659,26 @@ func RetrieveTPUEmbeddingFTRLParameters(scope *Scope, num_shards int64, shard_id
 	return op.Output(0), op.Output(1), op.Output(2)
 }
 
+// A container for an iterator resource.
+//
+// Arguments:
+//	handle: A handle to the iterator to delete.
+//	deleter: A variant deleter.
+//
+// Returns the created operation.
+func DeleteIterator(scope *Scope, handle tf.Output, deleter tf.Output) (o *tf.Operation) {
+	if scope.Err() != nil {
+		return
+	}
+	opspec := tf.OpSpec{
+		Type: "DeleteIterator",
+		Input: []tf.Input{
+			handle, deleter,
+		},
+	}
+	return scope.AddOperation(opspec)
+}
+
 // Quantized Batch normalization.
 //
 // This op is deprecated and will be removed in the future. Prefer
@@ -31442,6 +31482,77 @@ func Atan2(scope *Scope, y tf.Output, x tf.Output) (z tf.Output) {
 	}
 	op := scope.AddOperation(opspec)
 	return op.Output(0)
+}
+
+// TensorStridedSliceUpdateAttr is an optional argument to TensorStridedSliceUpdate.
+type TensorStridedSliceUpdateAttr func(optionalAttr)
+
+// TensorStridedSliceUpdateBeginMask sets the optional begin_mask attribute to value.
+// If not specified, defaults to 0
+func TensorStridedSliceUpdateBeginMask(value int64) TensorStridedSliceUpdateAttr {
+	return func(m optionalAttr) {
+		m["begin_mask"] = value
+	}
+}
+
+// TensorStridedSliceUpdateEndMask sets the optional end_mask attribute to value.
+// If not specified, defaults to 0
+func TensorStridedSliceUpdateEndMask(value int64) TensorStridedSliceUpdateAttr {
+	return func(m optionalAttr) {
+		m["end_mask"] = value
+	}
+}
+
+// TensorStridedSliceUpdateEllipsisMask sets the optional ellipsis_mask attribute to value.
+// If not specified, defaults to 0
+func TensorStridedSliceUpdateEllipsisMask(value int64) TensorStridedSliceUpdateAttr {
+	return func(m optionalAttr) {
+		m["ellipsis_mask"] = value
+	}
+}
+
+// TensorStridedSliceUpdateNewAxisMask sets the optional new_axis_mask attribute to value.
+// If not specified, defaults to 0
+func TensorStridedSliceUpdateNewAxisMask(value int64) TensorStridedSliceUpdateAttr {
+	return func(m optionalAttr) {
+		m["new_axis_mask"] = value
+	}
+}
+
+// TensorStridedSliceUpdateShrinkAxisMask sets the optional shrink_axis_mask attribute to value.
+// If not specified, defaults to 0
+func TensorStridedSliceUpdateShrinkAxisMask(value int64) TensorStridedSliceUpdateAttr {
+	return func(m optionalAttr) {
+		m["shrink_axis_mask"] = value
+	}
+}
+
+// Assign `value` to the sliced l-value reference of `input`.
+//
+// The values of `value` are assigned to the positions in the tensor `input` that
+// are selected by the slice parameters. The slice parameters `begin` `end`
+// `strides` etc. work exactly as in `StridedSlice`.
+//
+// NOTE this op currently does not support broadcasting and so `value`'s shape
+// must be exactly the shape produced by the slice of `input`.
+//
+// Returns the created operation.
+func TensorStridedSliceUpdate(scope *Scope, input tf.Output, begin tf.Output, end tf.Output, strides tf.Output, value tf.Output, optional ...TensorStridedSliceUpdateAttr) (o *tf.Operation) {
+	if scope.Err() != nil {
+		return
+	}
+	attrs := map[string]interface{}{}
+	for _, a := range optional {
+		a(attrs)
+	}
+	opspec := tf.OpSpec{
+		Type: "TensorStridedSliceUpdate",
+		Input: []tf.Input{
+			input, begin, end, strides, value,
+		},
+		Attrs: attrs,
+	}
+	return scope.AddOperation(opspec)
 }
 
 // Compute the regularized incomplete beta integral \\(I_x(a, b)\\).
