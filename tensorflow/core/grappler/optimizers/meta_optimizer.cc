@@ -24,6 +24,7 @@ limitations under the License.
 #include "tensorflow/core/graph/graph_constructor.h"
 #include "tensorflow/core/grappler/clusters/virtual_cluster.h"
 #include "tensorflow/core/grappler/optimizers/arithmetic_optimizer.h"
+#include "tensorflow/core/grappler/optimizers/auto_mixed_precision.h"
 #include "tensorflow/core/grappler/optimizers/auto_parallel.h"
 #include "tensorflow/core/grappler/optimizers/constant_folding.h"
 #include "tensorflow/core/grappler/optimizers/custom_graph_optimizer_registry.h"
@@ -81,7 +82,7 @@ int NumIterations(const RewriterConfig& cfg) {
 // Check if optimizer is allowed to run only once.
 bool IsRunOnceOptimizer(const string& name) {
   return name == "layout" || name == "memory_optimizer" ||
-         name == "loop_optimizer";
+         name == "loop_optimizer" || name == "auto_mixed_precision";
 }
 
 uint64 DeadlineMicroSeconds(const RewriterConfig& cfg) {
@@ -108,6 +109,16 @@ Status CompressConstants(GraphDef* graph) {
   return Status::OK();
 }
 
+// A helper function to decide whether to enable the automatic mixed precision
+// optimizer.
+bool AutoMixedPrecisionEnabled(RewriterConfig::Toggle opt_level) {
+  if (opt_level == RewriterConfig::ON ||
+      opt_level == RewriterConfig::AGGRESSIVE) {
+    return true;
+  }
+  return false;
+}
+
 }  // namespace
 
 #define MK_OPT(NAME, VALUE) \
@@ -121,6 +132,8 @@ std::unique_ptr<GraphOptimizer> MetaOptimizer::MakeNewOptimizer(
   MK_OPT("shape", new ShapeOptimizer());
   MK_OPT("remap", new Remapper(cfg_.remapping()));
   MK_OPT("layout", new LayoutOptimizer());
+  MK_OPT("auto_mixed_precision",
+         new AutoMixedPrecision(cfg_.auto_mixed_precision()));
   MK_OPT("memory", new MemoryOptimizer(RewriterConfig::MANUAL));
   MK_OPT("arithmetic", new ArithmeticOptimizer(cfg_.arithmetic_optimization()));
   MK_OPT("autoparallel", new AutoParallel(cfg_.auto_parallel().num_replicas()));
@@ -191,6 +204,10 @@ Status MetaOptimizer::InitializeOptimizers(
   }
   if (cfg_.layout_optimizer() != RewriterConfig::OFF) {
     optimizers->push_back(MakeUnique<LayoutOptimizer>());
+  }
+  if (AutoMixedPrecisionEnabled(cfg_.auto_mixed_precision())) {
+    optimizers->push_back(
+        MakeUnique<AutoMixedPrecision>(cfg_.auto_mixed_precision()));
   }
   if (cfg_.memory_optimization() != RewriterConfig::NO_MEM_OPT) {
     if (cfg_.memory_optimizer_target_node_name_scope().empty()) {
@@ -534,11 +551,23 @@ Status MetaOptimizer::Optimize(Cluster* cluster, const GrapplerItem& item,
 
   // Find functions for which we might need to compute a gradient at runtime.
   absl::flat_hash_set<string> differentiable_functions;
-  for (const NodeDef& node : optimized_graph->node()) {
-    if (IsSymbolicGradient(node)) {
-      const auto* f_attr = gtl::FindOrNull(node.attr(), "f");
-      if (f_attr) differentiable_functions.insert(f_attr->func().name());
+
+  using NodeDefs = protobuf::RepeatedPtrField<NodeDef>;
+  const auto find_differentiable_functions =
+      [&differentiable_functions](const NodeDefs& nodes) -> void {
+    for (const NodeDef& node : nodes) {
+      if (IsSymbolicGradient(node)) {
+        const auto* f_attr = gtl::FindOrNull(node.attr(), "f");
+        if (f_attr) differentiable_functions.insert(f_attr->func().name());
+      }
     }
+  };
+
+  // SymbolicGradient nodes inside the main graph.
+  find_differentiable_functions(optimized_graph->node());
+  // SymbolicGradient nodes inside the function library.
+  for (const FunctionDef& function : optimized_graph->library().function()) {
+    find_differentiable_functions(function.node_def());
   }
 
   // Optimize each function only once.
@@ -580,11 +609,8 @@ Status MetaOptimizer::Optimize(Cluster* cluster, const GrapplerItem& item,
 
       // If we need to compute the gradient of optimized function at runtime, we
       // can't perform non-differentiable rewrites.
-      if (differentiable_functions.find(func_name) !=
-          differentiable_functions.end()) {
-        func_item.optimization_options().allow_non_differentiable_rewrites =
-            false;
-      }
+      func_item.optimization_options().allow_non_differentiable_rewrites =
+          !differentiable_functions.contains(func_name);
 
       // Device set available to the function is defined only by the runtime,
       // when we instantiate and execute the function. We can't use all devices
@@ -711,6 +737,7 @@ bool MetaOptimizerEnabled(const ConfigProto& cfg) {
          rewrite_cfg.debug_stripper() == RewriterConfig::ON ||
          rewrite_cfg.scoped_allocator_optimization() == RewriterConfig::ON ||
          rewrite_cfg.pin_to_host_optimization() == RewriterConfig::ON ||
+         AutoMixedPrecisionEnabled(rewrite_cfg.auto_mixed_precision()) ||
          !rewrite_cfg.optimizers().empty() ||
          !rewrite_cfg.custom_optimizers().empty();
 }
