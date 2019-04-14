@@ -11,11 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+# =============================================================================
 
+"""Backwards compatibility tests for imports of tf.contrib.proto."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-# pylint: disable=unused-import
-from tensorflow.python.ops.proto_ops import decode_proto
+from tensorflow.contrib import proto
+from tensorflow.python.platform import test
+
+
+class ProtoImportTest(test.TestCase):
+
+  def testImport(self):
+    self.assertTrue(proto.decode_proto)  # Should be accessible
+    self.assertTrue(proto.encode_proto)  # Should be accessible
+
+
+if __name__ == '__main__':
+  test.main()
