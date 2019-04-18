@@ -136,6 +136,8 @@ load(
     "tf_additional_libdevice_deps",
     "tf_additional_libdevice_srcs",
     "tf_additional_minimal_lib_srcs",
+    "tf_additional_monitoring_hdrs",
+    "tf_additional_monitoring_srcs",
     "tf_additional_mpi_lib_defines",
     "tf_additional_numa_copts",
     "tf_additional_numa_deps",
@@ -587,6 +589,7 @@ filegroup(
         "platform/cpu_feature_guard.h",
         "platform/error.h",
         "platform/fingerprint.h",
+        "platform/monitoring.h",
         "platform/net.h",
         "platform/notification.h",
         "platform/prefetch.h",
@@ -598,7 +601,7 @@ filegroup(
         "platform/stacktrace_handler.h",
         "platform/strong_hash.h",
         "platform/subprocess.h",
-    ],
+    ] + tf_additional_monitoring_hdrs(),
     visibility = ["//visibility:private"],
 )
 
@@ -1400,6 +1403,7 @@ cc_library(
         ":framework",
         ":lib",
         ":math_ops_op_lib",
+        ":protos_all_cc",
     ],
     alwayslink = 1,
 )
@@ -2323,6 +2327,7 @@ LIB_INTERNAL_PUBLIC_HEADERS = tf_additional_lib_hdrs() + [
     "platform/denormal.h",
     "platform/host_info.h",
     "platform/platform.h",
+    "platform/monitoring.h",
     "platform/protobuf_internal.h",
     "platform/setround.h",
     "platform/snappy.h",
@@ -2383,6 +2388,7 @@ cc_library(
             "lib/jpeg/**/*",
             "lib/png/**/*",
             "platform/**/env_time.cc",
+            "platform/**/monitoring.cc",
             "platform/**/cuda_libdevice_path.cc",
             "platform/**/device_tracer.cc",
             "platform/**/logger.cc",
@@ -2397,6 +2403,7 @@ cc_library(
             "platform/**/cuda.h",
             "platform/**/cuda_libdevice_path.cc",
             "platform/**/rocm.h",
+            "platform/**/monitoring.cc",
             "platform/**/stream_executor.h",
             "platform/**/env_time.cc",
             "platform/**/device_tracer.cc",
@@ -2408,7 +2415,7 @@ cc_library(
         # Protobuf deps already included through the ":lib_proto_parsing"
         # dependency.
         tf_additional_proto_srcs(),
-    ),
+    ) + tf_additional_monitoring_srcs(),
     hdrs = LIB_INTERNAL_PUBLIC_HEADERS,
     copts = tf_copts(),
     defines = LIB_INTERNAL_DEFINES,
@@ -4825,7 +4832,7 @@ tf_cc_test_gpu(
     name = "gpu_debug_allocator_test",
     size = "medium",
     srcs = ["common_runtime/gpu/gpu_debug_allocator_test.cc"],
-    args = ["--gtest_death_test_style=threadsafe"],
+    args = ["\"--gtest_death_test_style=threadsafe\""],
     linkstatic = tf_kernel_tests_linkstatic(),
     tags = tf_cuda_tests_tags(),
     deps = [
