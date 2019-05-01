@@ -38,16 +38,14 @@ enum class LoopStructure { kGeneral, kSimple, kAuto };
 enum class ZeroPointSupport { kGeneral, kSymmetric };
 
 // In general we allow all Layout's, even if we may use slow paths for some
-// kinds of layouts. By choosing kPackedLinearRCC, one may opt out of this and
+// kinds of layouts. By choosing kRCC, one may opt out of this and
 // only keep support for the simplest and most efficient combination of
 // Layout's, in exchange for smaller code size. The case covered by
-// kPackedLinearRCC is that where all matrix layouts are linear (no sub-block
-// structure), packed (no striding), and where the storage orders are exactly
-// the following:
+// kRCC is where the storage orders are exactly the following:
 //    - LHS is RowMajor
 //    - RHS is ColMajor
 //    - Destination is ColMajor
-enum class LayoutSupport { kGeneral, kPackedLinearRCC };
+enum class LayoutSupport { kGeneral, kRCC };
 
 // A Spec describes all about a matrix multiplication operation that isn't
 // encoded in the LHS, RHS and destination matrices. Some of that information
