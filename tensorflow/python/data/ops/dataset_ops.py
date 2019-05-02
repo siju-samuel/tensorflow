@@ -767,7 +767,32 @@ class DatasetV2(tracking_base.Trackable):
     """
     return RepeatDataset(self, count)
 
-  def _enumerate(self, start=0):
+  def enumerate(self, start=0):
+    """Enumerates the elements of this dataset.
+
+    It is similar to python's `enumerate`.
+
+    For example:
+
+    ```python
+    # NOTE: The following examples use `{ ... }` to represent the
+    # contents of a dataset.
+    a = { 1, 2, 3 }
+    b = { (7, 8), (9, 10) }
+
+    # The nested structure of the `datasets` argument determines the
+    # structure of elements in the resulting dataset.
+    a.enumerate(start=5)) == { (5, 1), (6, 2), (7, 3) }
+    b.enumerate() == { (0, (7, 8)), (1, (9, 10)) }
+    ```
+
+    Args:
+      start: A `tf.int64` scalar `tf.Tensor`, representing the start value for
+        enumeration.
+
+    Returns:
+      Dataset: A `Dataset`.
+    """
 
     max_value = np.iinfo(dtypes.int64.as_numpy_dtype).max
     return Dataset.zip((Dataset.range(start, max_value), self))
@@ -1056,6 +1081,17 @@ class DatasetV2(tracking_base.Trackable):
 
     In addition to `tf.Tensor` objects, `map_func` can accept as arguments and
     return `tf.SparseTensor` objects.
+
+    Note that irrespective of the context in which `map_func` is defined (eager
+    vs. graph), tf.data traces the function and executes it as a graph. To use
+    Python code inside of the function you have two options:
+
+    1) Rely on AutoGraph to convert Python code into an equivalent graph
+    computation. The downside of this approach is that AutoGraph can convert
+    some but not all Python code.
+
+    2) Use `tf.py_function`, which allows you to write arbitrary Python code but
+    will generally result in worse performance than 1).
 
     Args:
       map_func: A function mapping a nested structure of tensors (having
@@ -2878,7 +2914,7 @@ class BatchDataset(UnaryDataset):
     return self._structure
 
 
-class _VariantTracker(tracking.TrackableResource):
+class _VariantTracker(tracking.CapturableResource):
   """Allows export of functions capturing a Dataset in SavedModels.
 
   When saving a SavedModel, `tf.saved_model.save` traverses the object

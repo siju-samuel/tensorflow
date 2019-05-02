@@ -236,7 +236,10 @@ cuda_py_test(
         "//tensorflow/python/ops/linalg",
     ],
     shard_count = 5,
-    tags = ["no_windows_gpu"],
+    tags = [
+        "no_windows_gpu" +
+        "nomsan",  # TODO(b/131773093): Re-enable.
+    ],
     xla_enable_strict_auto_jit = True,
 )
 
@@ -2677,6 +2680,7 @@ cuda_py_test(
         "//tensorflow/python:variable_scope",
         "//tensorflow/python:cond_v2",
         "//tensorflow/python:while_v2",
+        "//tensorflow/python/data/ops:dataset_ops",
         "//tensorflow/python/eager:backprop",
         "//tensorflow/python/eager:context",
         "//tensorflow/python/eager:def_function",
