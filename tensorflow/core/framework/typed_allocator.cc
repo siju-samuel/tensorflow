@@ -1,4 +1,4 @@
-/* Copyright 2016 The TensorFlow Authors. All Rights Reserved.
+/* Copyright 2015 The TensorFlow Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,21 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "tensorflow/core/platform/cuda_libdevice_path.h"
+#include "tensorflow/core/framework/typed_allocator.h"
 
-#include <stdlib.h>
-#include <vector>
-
-#if !defined(PLATFORM_GOOGLE)
-#include "third_party/gpus/cuda/cuda_config.h"
-#endif
-#include "tensorflow/core/platform/logging.h"
+#include "tensorflow/core/framework/variant.h"
 
 namespace tensorflow {
 
-std::vector<string> CandidateCudaRoots() {
-  VLOG(3) << "CUDA root = " << TF_CUDA_TOOLKIT_PATH;
-  return {TF_CUDA_TOOLKIT_PATH};
+/* static */
+void TypedAllocator::RunVariantCtor(Variant* p, size_t n) {
+  for (size_t i = 0; i < n; ++p, ++i) new (p) Variant();
+}
+
+/* static */
+void TypedAllocator::RunVariantDtor(Variant* p, size_t n) {
+  for (size_t i = 0; i < n; ++p, ++i) p->~Variant();
 }
 
 }  // namespace tensorflow
