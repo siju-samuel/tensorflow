@@ -1178,7 +1178,10 @@ tf_gen_op_libs(
     op_lib_names = [
         "array_ops",
     ],
-    deps = [":protos_all_cc"],
+    deps = [
+        ":lib",
+        ":protos_all_cc",
+    ],
 )
 
 tf_gen_op_libs(
@@ -3327,7 +3330,7 @@ tf_cuda_library(
     name = "device_tracer",
     srcs = tf_additional_device_tracer_srcs(),
     copts = tf_copts(),
-    cuda_deps = tf_additional_cupti_wrapper_deps() + tf_additional_device_tracer_cuda_deps(),
+    cuda_deps = if_cuda_is_configured(tf_additional_cupti_wrapper_deps() + tf_additional_device_tracer_cuda_deps()),
     visibility = [
         "//tensorflow:internal",
     ],

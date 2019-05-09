@@ -468,6 +468,15 @@ tf_py_test(
 )
 
 tf_py_test(
+    name = "fingerprint_op_test",
+    size = "small",
+    srcs = ["fingerprint_op_test.py"],
+    additional_deps = [
+        "//third_party/py/numpy",
+    ],
+)
+
+tf_py_test(
     name = "fractional_avg_pool_op_test",
     size = "small",
     srcs = ["fractional_avg_pool_op_test.py"],
@@ -1779,7 +1788,6 @@ tf_py_test(
         "//tensorflow/python:control_flow_util_v2",
         "//tensorflow/python:while_v2",
     ],
-    tags = ["no_gpu"],  # TODO(b/117796385): runs out of memory
 )
 
 cuda_py_test(
