@@ -33,7 +33,7 @@ limitations under the License.
 #include "tensorflow/compiler/xla/python/local_client.h"
 #include "tensorflow/compiler/xla/python/types.h"
 #include "tensorflow/compiler/xla/python/xrt.h"
-#include "tensorflow/compiler/xla/service/cpu/custom_call_target_registry.h"
+#include "tensorflow/compiler/xla/service/custom_call_target_registry.h"
 #include "tensorflow/compiler/xla/service/hlo_graph_dumper.h"
 #include "tensorflow/compiler/xla/service/hlo_instruction.h"
 #include "tensorflow/compiler/xla/service/hlo_module.h"
@@ -301,7 +301,12 @@ PYBIND11_MODULE(xla_extension, m) {
   // XlaBuilder.
   py::module ops = m.def_submodule("ops", "XLA operations");
 
+  ops.def("AllReduce",
+          static_cast<XlaOp (*)(
+              XlaOp, const XlaComputation&, absl::Span<const ReplicaGroup>,
+              const absl::optional<ChannelHandle>&)>(&CrossReplicaSum));
   ops.def("AllToAll", &AllToAll);
+  ops.def("CollectivePermute", &CollectivePermute);
   ops.def("CrossReplicaSum",
           static_cast<XlaOp (*)(XlaOp, absl::Span<const ReplicaGroup>)>(
               &CrossReplicaSum));
