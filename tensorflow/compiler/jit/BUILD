@@ -257,6 +257,11 @@ cc_library(
     name = "xla_launch_util",
     srcs = ["xla_launch_util.cc"],
     hdrs = ["xla_launch_util.h"],
+    # TODO(skyewm): remove this once XlaAllocator is factored out.
+    visibility = [
+        ":internal",
+        "//tensorflow/compiler/xla/python:__pkg__",
+    ],
     deps = [
         ":common",
         ":xla_compilation_cache",
@@ -322,7 +327,6 @@ cc_library(
     deps = [
         ":compilation_passes",
         "//tensorflow/compiler/tf2xla:functionalize_control_flow_pass_registration",
-        "//tensorflow/compiler/tf2xla:rearrange_function_argument_pass_registration",
         "//tensorflow/core:core_cpu_internal",
     ],
     alwayslink = 1,
@@ -702,7 +706,7 @@ tf_cc_test(
         "//tensorflow/cc:scope",
         "//tensorflow/cc:sendrecv_ops",
         "//tensorflow/compiler/jit/kernels:xla_ops",
-        "//tensorflow/compiler/tf2xla:rearrange_function_argument_pass",
+        "//tensorflow/compiler/tf2xla:rearrange_function_argument",
         "//tensorflow/compiler/tf2xla:side_effect_util",
         "//tensorflow/compiler/tf2xla:test_util",
         "//tensorflow/compiler/tf2xla:xla_compiler",
