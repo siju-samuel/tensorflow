@@ -78,7 +78,7 @@ tf_kernel_library(
         "//tensorflow/core/kernels:bounds_check",
         "//tensorflow/core/kernels:conv_2d_hdrs",
         "//tensorflow/core/kernels:conv_ops_gpu_hdrs",
-        "//tensorflow/core/kernels:cwise_op",
+        "//tensorflow/core/kernels:cwise_lib_hdrs",
         "//tensorflow/core/kernels:eigen_contraction_kernel",
         "//tensorflow/core/kernels:gpu_util_hdrs",
         "//tensorflow/core/kernels:ops_util_hdrs",
