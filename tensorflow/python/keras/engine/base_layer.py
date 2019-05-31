@@ -774,11 +774,6 @@ class Layer(module.Module):
     with backend.get_graph().as_default():
       updates = []
       for u in self._updates:
-        # Filter out updates created in a cross-replica context when in a
-        # replica context and vice versa.
-        if (getattr(u, '_in_cross_replica_context', False) !=
-            ds_context.in_cross_replica_context()):
-          continue
         if callable(u):
           try:
             u = u()
@@ -1057,15 +1052,17 @@ class Layer(module.Module):
         that returns an update op. A zero-arg callable should be passed in
         order to disable running the updates by setting `trainable=False`
         on this Layer, when executing in Eager mode.
-      inputs: If anything other than None is passed, it signals the updates
-        are conditional on some of the layer's inputs,
-        and thus they should only be run where these inputs are available.
-        This is the case for BatchNormalization updates, for instance.
-        If None, the updates will be taken into account unconditionally,
-        and you are responsible for making sure that any dependency they might
-        have is available at runtime.
-        A step counter might fall into this category.
+      inputs: Deprecated, will be automatically inferred.
     """
+    if ds_context.has_strategy() and ds_context.in_cross_replica_context():
+      # Updates don't need to be run in a cross-replica context.
+      if (ops.executing_eagerly_outside_functions() and
+          not base_layer_utils.is_in_keras_graph()):
+        raise RuntimeError(  # pylint: disable=g-doc-exception
+            '`add_update` was called in a cross-replica context. This is not '
+            'expected. If you require this feature, please file an issue.')
+      return
+
     updates = generic_utils.to_list(updates)
     call_context = base_layer_utils.call_context()
 
@@ -1107,8 +1104,6 @@ class Layer(module.Module):
 
       reachable = tf_utils.get_reachable_from_inputs(relevant_inputs, [update])
       update._unconditional_update = update not in reachable
-      update._in_cross_replica_context = (
-          ds_context.has_strategy() and ds_context.in_cross_replica_context())
       return update
 
     updates = [process_update(x) for x in updates]
