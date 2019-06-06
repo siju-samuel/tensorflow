@@ -111,6 +111,7 @@ py_library(
         "//tensorflow/python/tools/api/generator:__pkg__",
         "//tensorflow/tools/api/tests:__pkg__",
         "//tensorflow/tools/compatibility/update:__pkg__",
+        "//third_party/py/tensorflow_core:__subpackages__",
     ],
     deps = [
         ":array_ops",
@@ -705,13 +706,11 @@ py_library(
         ":framework_for_generated_wrappers",
         ":function",
         ":graph_util",
-        ":indexed_slices_tensor_spec",
         ":lib",
         ":platform",
         ":pywrap_tensorflow",
         ":random_seed",
         ":sparse_tensor",
-        ":sparse_tensor_spec",
         ":tensor_spec",
         ":tensor_util",
         ":type_spec",
@@ -1249,30 +1248,6 @@ py_library(
         ":type_spec",
         ":util",
         "//third_party/py/numpy",
-    ],
-)
-
-py_library(
-    name = "sparse_tensor_spec",
-    srcs = ["framework/sparse_tensor_spec.py"],
-    srcs_version = "PY2AND3",
-    deps = [
-        ":dtypes",
-        ":sparse_tensor",
-        ":tensor_shape",
-        ":tensor_spec",
-    ],
-)
-
-py_library(
-    name = "indexed_slices_tensor_spec",
-    srcs = ["framework/indexed_slices_tensor_spec.py"],
-    srcs_version = "PY2AND3",
-    deps = [
-        ":dtypes",
-        ":framework_ops",
-        ":sparse_tensor",
-        ":tensor_shape",
     ],
 )
 
