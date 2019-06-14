@@ -35,9 +35,10 @@ limitations under the License.
 #include "tensorflow/core/util/einsum_op_util.h"
 
 namespace tensorflow {
-namespace {
 
 using CPUDevice = Eigen::ThreadPoolDevice;
+
+namespace {
 
 using ShapeVec = gtl::InlinedVector<int64, 8>;
 using Labels = gtl::InlinedVector<int, 8>;
