@@ -3348,6 +3348,7 @@ tf_cuda_library(
         ":lib",
         ":proto_text",
         ":protos_all_cc",
+        "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
         "//tensorflow/core/grappler:grappler_item",
         "//tensorflow/core/grappler/clusters:utils",
@@ -4746,6 +4747,9 @@ tf_cc_test(
     size = "small",
     srcs = ["framework/run_handler_test.cc"],
     linkstatic = tf_kernel_tests_linkstatic(),
+    tags = [
+        "notsan",
+    ],
     deps = [
         ":framework_internal",
         ":lib",
