@@ -729,12 +729,8 @@ class Conv2DCustomBackpropInputOp : public OpKernel {
   TF_DISALLOW_COPY_AND_ASSIGN(Conv2DCustomBackpropInputOp);
 };
 
-// TODO(ezhulenev): Add XSMM support to LaunchConv2DBackpropInputOp functor.
-#ifdef TENSORFLOW_USE_LIBXSMM_CONVOLUTIONS
+// TODO(ezhulenev): Add a cost model to switch between custom/Eigen ops.
 #define DEFAULT_CPU_OP Conv2DCustomBackpropInputOp
-#else
-#define DEFAULT_CPU_OP Conv2DBackpropInputOp
-#endif
 
 #define REGISTER_CPU_KERNELS(T)                                              \
   REGISTER_KERNEL_BUILDER(                                                   \
@@ -1120,10 +1116,10 @@ void LaunchConv2DBackpropInputOp<GPUDevice, T>::operator()(
             absl::Milliseconds(profile_result.elapsed_time_in_ms()));
       }
     }
-    LogConvAutotuneResults(se::dnn::ConvolutionKind::BACKWARD_DATA,
-                           se::dnn::ToDataType<T>::value, input_desc,
-                           filter_desc, output_desc, conv_desc,
-                           stream->parent(), results);
+    LogConvAutotuneResults(
+        se::dnn::ConvolutionKind::BACKWARD_DATA, se::dnn::ToDataType<T>::value,
+        in_backprop_ptr, filter_ptr, out_backprop_ptr, input_desc, filter_desc,
+        output_desc, conv_desc, stream->parent(), results);
     OP_REQUIRES_OK(ctx, BestCudnnConvAlgorithm(results, &algorithm_config));
     AutoTuneConvBwdData::GetInstance()->Insert(conv_parameters,
                                                algorithm_config);
