@@ -375,6 +375,10 @@ cuda_py_test(
         "//tensorflow/python/keras",
     ],
     shard_count = 14,
+    # TODO(b/132384649): Enable once fixed.
+    tags = [
+        "no_oss",
+    ],
     xla_enable_strict_auto_jit = True,
 )
 

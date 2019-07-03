@@ -786,6 +786,7 @@ tf_xla_py_test(
     name = "random_ops_test",
     size = "small",
     srcs = ["random_ops_test.py"],
+    shard_count = 5,
     deps = [
         ":xla_test",
         "//tensorflow/python:array_ops",
@@ -938,8 +939,9 @@ tf_xla_py_test(
 
 tf_xla_py_test(
     name = "stateful_random_ops_test",
-    size = "small",
+    size = "medium",
     srcs = ["stateful_random_ops_test.py"],
+    shard_count = 10,
     tags = ["optonly"],
     deps = [
         ":xla_test",
@@ -953,7 +955,7 @@ tf_xla_py_test(
 
 tf_xla_py_test(
     name = "stateless_random_ops_test",
-    size = "small",
+    size = "medium",
     srcs = ["stateless_random_ops_test.py"],
     tags = ["optonly"],
     deps = [

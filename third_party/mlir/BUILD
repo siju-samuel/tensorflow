@@ -57,7 +57,6 @@ cc_library(
         "include/mlir/IR/DialectHooks.h",
         "include/mlir/IR/DialectSymbolRegistry.def",
         "include/mlir/IR/Function.h",
-        "include/mlir/IR/FunctionGraphTraits.h",
         "include/mlir/IR/Identifier.h",
         "include/mlir/IR/IntegerSet.h",
         "include/mlir/IR/Location.h",
@@ -70,6 +69,7 @@ cc_library(
         "include/mlir/IR/OperationSupport.h",
         "include/mlir/IR/PatternMatch.h",
         "include/mlir/IR/Region.h",
+        "include/mlir/IR/RegionGraphTraits.h",
         "include/mlir/IR/StandardTypes.h",
         "include/mlir/IR/StorageUniquerSupport.h",
         "include/mlir/IR/SymbolTable.h",
@@ -96,6 +96,7 @@ cc_library(
         "lib/Pass/PassTiming.cpp",
     ],
     hdrs = [
+        "include/mlir/Analysis/Verifier.h",
         "include/mlir/Pass/AnalysisManager.h",
         "include/mlir/Pass/Pass.h",
         "include/mlir/Pass/PassInstrumentation.h",
@@ -406,6 +407,7 @@ cc_library(
     deps = [
         ":GPUOpsIncGen",
         ":IR",
+        ":StandardOps",
         ":Support",
     ],
 )
@@ -909,6 +911,7 @@ cc_library(
         "include/mlir/Analysis/SliceAnalysis.h",
         "include/mlir/Analysis/Utils.h",
         "include/mlir/Analysis/VectorAnalysis.h",
+        "include/mlir/Analysis/Verifier.h",
     ],
     includes = ["include"],
     deps = [
@@ -1068,15 +1071,15 @@ cc_library(
         ":SPIRVDialectRegistration",
         ":Support",
         ":Transforms",
-        ":ViewFunctionGraph",
+        ":ViewRegionGraph",
         "@llvm//:support",
     ],
 )
 
 cc_library(
-    name = "ViewFunctionGraph",
-    srcs = ["lib/Transforms/ViewFunctionGraph.cpp"],
-    hdrs = ["include/mlir/Transforms/ViewFunctionGraph.h"],
+    name = "ViewRegionGraph",
+    srcs = ["lib/Transforms/ViewRegionGraph.cpp"],
+    hdrs = ["include/mlir/Transforms/ViewRegionGraph.h"],
     includes = ["include"],
     deps = [
         ":Analysis",
@@ -1093,6 +1096,7 @@ cc_library(
     hdrs = ["include/mlir/Support/TranslateClParser.h"],
     includes = ["include"],
     deps = [
+        ":Analysis",
         ":IR",
         ":Parser",
         ":Support",
