@@ -270,6 +270,7 @@ tf_py_test(
     tags = [
         "no_windows",
         "nomac",
+        "notap",  # TODO(b/137133525): enable after this is fixed.
     ],
 )
 
@@ -3554,6 +3555,7 @@ py_library(
         ":math_ops",
         ":platform",
         "//tensorflow/compiler/tf2xla/ops:gen_xla_ops",
+        "@functools32_archive//:functools32",
         "@opt_einsum_archive//:opt_einsum",
     ],
 )
@@ -4545,9 +4547,9 @@ tf_py_test(
 )
 
 tf_py_test(
-    name = "deprecation_wrapper_test",
+    name = "module_wrapper_test",
     size = "small",
-    srcs = ["util/deprecation_wrapper_test.py"],
+    srcs = ["util/module_wrapper_test.py"],
     additional_deps = [
         ":client_testlib",
         ":util",
@@ -5297,6 +5299,7 @@ tf_py_test(
         ":lib",
         ":util",
     ],
+    tags = ["no_windows"],  # b/137097422
 )
 
 cuda_py_test(
