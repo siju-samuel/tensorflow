@@ -36,11 +36,25 @@ limitations under the License.
 #define BYTE_SWAP_32(x) bswap_32(x)
 #define BYTE_SWAP_64(x) bswap_64(x)
 
+#elif defined(PLATFORM_WINDOWS)
+
+// On windows, byte-swapping is in winsock.h, and winsock2.h has a version of
+// of htonl that can byte-swap 64-bit values.
+#include <winsock2.h>
+#define BYTE_SWAP_16(x) htons(x)
+#define BYTE_SWAP_32(x) htonl(x)
+// At the moment the 64-bit and 128-bit byte-swapping routines in Winsock2 are
+// disabled in TensorFlow's standard Windows build environment, so we use
+// htonl() instead of "#define BYTE_SWAP_64(x) htonll (x)".
+#define BYTE_SWAP_64(x)                                \
+  ((uint64_t(htonl((x)&0x00000000ffffffffUL)) << 32) | \
+   (htonl(((x)&0xffffffff00000000UL) >> 32)))
+
 #elif __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 
-// On non-Linux, but little-endian, environments, use htonl/s, which byte-swap
-// when the host byte order is little-endian. POSIX doesn't define a 64-bit
-// version of these library functions, so we roll our own.
+// On non-Linux, non-Windows, but little-endian, environments, use htonl/s,
+// which byte-swap when the host byte order is little-endian. POSIX doesn't
+// define a 64-bit version of these library functions, so we roll our own.
 #include <arpa/inet.h>
 #define BYTE_SWAP_16(x) htons(x)
 #define BYTE_SWAP_32(x) htonl(x)
@@ -48,7 +62,8 @@ limitations under the License.
   ((uint64_t(htonl((x)&0x00000000ffffffffUL)) << 32) | \
    (htonl(((x)&0xffffffff00000000UL) >> 32)))
 
-#else  // not defined(__linux__) and (__BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__)
+#else  // not defined(__linux__) and not defined(PLATFORM_WINDOWS)
+       // and (__BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__)
 
 // Fall back on a non-optimized implementation on other big-endian targets.
 // This code swaps one byte at a time and is probably an order of magnitude
