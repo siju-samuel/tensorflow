@@ -25,6 +25,7 @@ limitations under the License.
 #include "tensorflow/core/framework/dataset.h"
 #include "tensorflow/core/graph/graph.h"
 #include "tensorflow/core/graph/graph_constructor.h"
+#include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/public/version.h"
 #include "tensorflow/core/util/ptr_util.h"
 
@@ -40,15 +41,15 @@ Iterator::Iterator(IteratorBase* iterator, IteratorContext* ctx)
     : iterator_(iterator), ctx_(ctx) {}
 
 Status Dataset::FromGraph(Params params, const GraphDef& graph_def,
-                          const string& fetch_node,
                           std::unique_ptr<Dataset>* result) {
   Graph graph(OpRegistry::Global());
   TF_RETURN_IF_ERROR(ImportGraphDef({}, graph_def, &graph, nullptr));
 
   // Instantiate enough of the TensorFlow runtime to run `graph` on a single CPU
   // device.
-  std::unique_ptr<DeviceMgr> device_mgr = MakeUnique<DeviceMgr>(
-      DeviceFactory::NewDevice("CPU", params.session_options, ""));
+  std::unique_ptr<DeviceMgr> device_mgr =
+      MakeUnique<DeviceMgr>(DeviceFactory::NewDevice(
+          "CPU", params.session_options, "/job:localhost/replica:0/task:0"));
   Device* device = device_mgr->ListDevices()[0];
   // Clone the `FunctionLibraryDefinition` to extend its lifetime extends beyond
   // the lifetime of `graph`.
@@ -58,6 +59,16 @@ Status Dataset::FromGraph(Params params, const GraphDef& graph_def,
       MakeUnique<ProcessFunctionLibraryRuntime>(
           device_mgr.get(), Env::Default(), TF_GRAPH_DEF_VERSION,
           flib_def.get(), OptimizerOptions{}, nullptr /* parent */);
+
+  string fetch_node = "";
+  for (auto node : graph_def.node()) {
+    if (node.op() == "_Retval") {
+      fetch_node = node.input(0);
+    }
+  }
+  if (fetch_node.empty()) {
+    return errors::NotFound("Failed to find a _Retval op in the given dataset");
+  }
 
   // Run graph up to `output_node` and extract the `DatasetBase` stored in the
   // DT_VARIANT output tensor.

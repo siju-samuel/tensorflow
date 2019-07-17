@@ -1,8 +1,4 @@
 package(
-    default_visibility = [
-        "//tensorflow:internal",
-        "//tensorflow_models:__subpackages__",
-    ],
     licenses = ["notice"],  # Apache 2.0
 )
 
@@ -13,7 +9,6 @@ cc_library(
     name = "standalone",
     srcs = ["standalone.cc"],
     hdrs = ["standalone.h"],
-    visibility = ["//visibility:public"],
     deps = [
         "//tensorflow/core:core_cpu_internal",
         "//tensorflow/core:framework",
