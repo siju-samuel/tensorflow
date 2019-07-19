@@ -626,6 +626,39 @@ def TFL_LessEqualOp : TFL_Op<"less_equal", [Broadcastable, NoSideEffect]> {
   let hasOptions = 0;
 }
 
+def TFL_LocalResponseNormalizationOp : TFL_Op<"local_response_normalization",
+                                             [NoSideEffect]> {
+    let summary = "Local Response Normalization.";
+
+  let description = [{
+The 4-D `input` tensor is treated as a 3-D array of 1-D vectors (along the last
+dimension), and each vector is normalized independently.  Within a given vector,
+each component is divided by the weighted, squared sum of inputs within
+`depth_radius`.  In detail,
+
+    sqr_sum[a, b, c, d] =
+        sum(input[a, b, c, d - depth_radius : d + depth_radius + 1] ** 2)
+    output = input / (bias + alpha * sqr_sum) ** beta
+
+For details, see [Krizhevsky et al., ImageNet classification with deep
+convolutional neural networks (NIPS 2012)](http://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks).
+  }];
+
+  let arguments = (ins
+      TensorOf<[F32]>:$input,
+      I32Attr:$radius,
+      F32Attr:$bias,
+      F32Attr:$alpha,
+      F32Attr:$beta
+  );
+
+  let results = (outs
+    TensorOf<[F32]>:$output
+  );
+
+  let hasOptions = 1;
+}
+
 def TFL_GreaterEqualOp : TFL_Op<"greater_equal", [Broadcastable, NoSideEffect]> {
   let summary = "Greater_equal operator";
 
@@ -1135,6 +1168,34 @@ def TFL_MeanOp : TFL_Op<"mean", [NoSideEffect]> {
 
   let hasOptions = 1;
   let customOption = "ReducerOptions";
+}
+
+def TFL_OneHotOp : TFL_Op<"one_hot", [NoSideEffect]> {
+  let summary = "OneHot operator";
+
+  let description = [{
+    Returns a one-hot tensor.The locations represented by indices in `indices`
+    take value `on_value`, while all other locations take value `off_value`.
+
+    If the input `indices` is rank `N`, the output will have rank `N+1`,
+    The new axis is created at dimension `axis` (default: the new axis is
+    appended at the end).
+  }];
+
+  let arguments = (ins
+    TensorOf<[I32, I64]>:$indices,
+    I32Tensor:$depth,
+    TensorOf<[F32, I32, I64, I1]>:$on_value,
+    TensorOf<[F32, I32, I64, I1]>:$off_value,
+
+    I32Attr:$axis
+  );
+
+  let results = (outs
+    TensorOf<[F32, I32, I64, I1]>:$output
+  );
+
+  let hasOptions = 1;
 }
 
 def TFL_SliceOp : TFL_Op<"slice", [NoSideEffect]> {
