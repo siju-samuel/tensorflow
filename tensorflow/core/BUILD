@@ -363,6 +363,7 @@ cc_library(
         ":lib_platform",
         "//tensorflow/core/platform/default/build_config:base",
         "@com_google_absl//absl/base",
+        "@com_google_absl//absl/base:log_severity",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -623,6 +624,38 @@ filegroup(
         "platform/subprocess.h",
     ] + tf_additional_monitoring_hdrs(),
     visibility = ["//visibility:private"],
+)
+
+cc_library(
+    name = "platform_unbounded_work_queue",
+    srcs = tf_platform_srcs([
+        "unbounded_work_queue.cc",
+    ]) + tf_platform_hdrs([
+        "unbounded_work_queue.h",
+    ]),
+    hdrs = ["platform/unbounded_work_queue.h"],
+    deps = [
+        ":core_cpu_internal",
+        ":framework",
+        ":lib",
+        "@com_google_absl//absl/memory",
+    ],
+)
+
+tf_cc_test(
+    name = "platform_unbounded_work_queue_test",
+    srcs = ["platform/unbounded_work_queue_test.cc"],
+    deps = [
+        ":framework",
+        ":lib",
+        ":lib_internal",
+        ":lib_test_internal",
+        ":platform_unbounded_work_queue",
+        ":protos_all_cc",
+        ":test",
+        ":test_main",
+        "@com_google_absl//absl/memory",
+    ],
 )
 
 # Headers that are not exported as part of ":lib".
@@ -1190,6 +1223,7 @@ cc_library(
         [
             "@nsync//:nsync_cpp",
         ] + [
+            "@com_google_absl//absl/base:log_severity",
             "//third_party/eigen3",
             "//tensorflow/core/platform/default/build_config:minimal",
         ],
@@ -2658,6 +2692,7 @@ cc_library(
         ":lib_internal",
         "//tensorflow/core/platform/default/build_config:png",
         "@com_google_absl//absl/base",
+        "@com_google_absl//absl/base:log_severity",
         "@com_google_absl//absl/strings",
         "@zlib_archive//:zlib",
     ],
@@ -2679,6 +2714,7 @@ cc_library(
     deps = [
         ":platform_base",
         "//tensorflow/core/platform/default/build_config:logging",
+        "@com_google_absl//absl/base:log_severity",
     ],
 )
 
@@ -2710,6 +2746,7 @@ cc_library(
         "//tensorflow/core/platform/default/build_config:jpeg",
         "//tensorflow/core/platform/default/build_config:logging",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:log_severity",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -2743,6 +2780,7 @@ cc_library(
         "//tensorflow/core/platform/default/build_config:gif",
         "//tensorflow/core/platform/default/build_config:logging",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/base:log_severity",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -2770,6 +2808,7 @@ cc_library(
     linkopts = ["-ldl"],
     deps = [
         "//tensorflow/core/platform/default/build_config:logging",
+        "@com_google_absl//absl/base:log_severity",
         "@com_google_absl//absl/strings",
         "@png_archive//:png",
     ],
