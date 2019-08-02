@@ -5756,10 +5756,27 @@ inline void BroadcastPow4D(const RuntimeShape& unextended_input1_shape,
                                     unextended_output_shape, output_data);
 }
 
+#ifdef USE_NEON
+
+inline void ScaleWithNewZeroPoint(const int32x4_t input,
+                                  const float32x4_t scale_dup,
+                                  const float32x4_t zero_times_scale_dup,
+                                  float32x4_t* output) {
+#ifdef __ARM_FEATURE_FMA
+  *output = vfmaq_f32(zero_times_scale_dup, vcvtq_f32_s32(input), scale_dup);
+#else
+  *output = vaddq_f32(vmulq_f32(vcvtq_f32_s32(input), scale_dup),
+                      zero_times_scale_dup);
+#endif
+}
+
+#endif  // USE_NEON
+
 inline void Dequantize(const tflite::DequantizationParams& op_params,
-                       const RuntimeShape& input_shape, const uint8* input_data,
+                       const RuntimeShape& input_shape,
+                       const uint8_t* input_data,
                        const RuntimeShape& output_shape, float* output_data) {
-  gemmlowp::ScopedProfilingLabel label("Dequantize");
+  gemmlowp::ScopedProfilingLabel label("Dequantize/Uint8");
   const int32 zero_point = op_params.zero_point;
   const double scale = op_params.scale;
   const int flat_size = MatchingFlatSize(input_shape, output_shape);
@@ -5767,44 +5784,106 @@ inline void Dequantize(const tflite::DequantizationParams& op_params,
   int i = 0;
 #ifdef USE_NEON
   const float32x4_t scale_dup = vdupq_n_f32(static_cast<float>(scale));
-#ifdef __ARM_FEATURE_FMA
   const float32x4_t zero_times_scale_dup =
       vdupq_n_f32(static_cast<float>(-zero_point * scale));
-#else
-  const int32x4_t zero_point_dup = vdupq_n_s32(zero_point);
-#endif  // __ARM_FEATURE_FMA
   for (; i <= flat_size - 8; i += 8) {
     const uint8x8_t input_u8 = vld1_u8(input_data + i);
     const uint16x8_t input_u16 = vmovl_u8(input_u8);
     const int16x8_t input_s16 = vreinterpretq_s16_u16(input_u16);
     const int16x4_t input_s16_low = vget_low_s16(input_s16);
     const int16x4_t input_s16_high = vget_high_s16(input_s16);
+    const int32x4_t val_low = vmovl_s16(input_s16_low);
+    const int32x4_t val_high = vmovl_s16(input_s16_high);
 
-    int32x4_t val_low = vmovl_s16(input_s16_low);
-    int32x4_t val_high = vmovl_s16(input_s16_high);
-
-#ifdef __ARM_FEATURE_FMA
-    float32x4_t result_low = vcvtq_f32_s32(val_low);
-    float32x4_t result_high = vcvtq_f32_s32(val_high);
-    result_low = vfmaq_f32(zero_times_scale_dup, result_low, scale_dup);
-    result_high = vfmaq_f32(zero_times_scale_dup, result_high, scale_dup);
-#else
-    val_low = vsubq_s32(val_low, zero_point_dup);
-    val_high = vsubq_s32(val_high, zero_point_dup);
-
-    float32x4_t result_low = vcvtq_f32_s32(val_low);
-    float32x4_t result_high = vcvtq_f32_s32(val_high);
-    result_low = vmulq_f32(result_low, scale_dup);
-    result_high = vmulq_f32(result_high, scale_dup);
-#endif  // __ARM_FEATURE_FMA
+    float32x4_t result_low, result_high;
+    ScaleWithNewZeroPoint(val_low, scale_dup, zero_times_scale_dup,
+                          &result_low);
+    ScaleWithNewZeroPoint(val_high, scale_dup, zero_times_scale_dup,
+                          &result_high);
 
     vst1q_f32(output_data + i, result_low);
     vst1q_f32(output_data + i + 4, result_high);
   }
 #endif  // NEON
   for (; i < flat_size; ++i) {
-    int32 val = input_data[i];
-    float result = static_cast<float>(scale * (val - zero_point));
+    const int32 val = input_data[i];
+    const float result = static_cast<float>(scale * (val - zero_point));
+    output_data[i] = result;
+  }
+}
+
+inline void Dequantize(const tflite::DequantizationParams& op_params,
+                       const RuntimeShape& input_shape,
+                       const int8_t* input_data,
+                       const RuntimeShape& output_shape, float* output_data) {
+  gemmlowp::ScopedProfilingLabel label("Dequantize/Int8");
+  const int32 zero_point = op_params.zero_point;
+  const double scale = op_params.scale;
+  const int flat_size = MatchingFlatSize(input_shape, output_shape);
+
+  int i = 0;
+#ifdef USE_NEON
+  const float32x4_t scale_dup = vdupq_n_f32(static_cast<float>(scale));
+  const float32x4_t zero_times_scale_dup =
+      vdupq_n_f32(static_cast<float>(-zero_point * scale));
+  for (; i <= flat_size - 8; i += 8) {
+    const int8x8_t input_s8 = vld1_s8(input_data + i);
+    const int16x8_t input_s16 = vmovl_s8(input_s8);
+    const int16x4_t input_s16_low = vget_low_s16(input_s16);
+    const int16x4_t input_s16_high = vget_high_s16(input_s16);
+    const int32x4_t val_low = vmovl_s16(input_s16_low);
+    const int32x4_t val_high = vmovl_s16(input_s16_high);
+
+    float32x4_t result_low, result_high;
+    ScaleWithNewZeroPoint(val_low, scale_dup, zero_times_scale_dup,
+                          &result_low);
+    ScaleWithNewZeroPoint(val_high, scale_dup, zero_times_scale_dup,
+                          &result_high);
+
+    vst1q_f32(output_data + i, result_low);
+    vst1q_f32(output_data + i + 4, result_high);
+  }
+#endif  // NEON
+  for (; i < flat_size; ++i) {
+    const int32 val = input_data[i];
+    const float result = static_cast<float>(scale * (val - zero_point));
+    output_data[i] = result;
+  }
+}
+
+inline void Dequantize(const tflite::DequantizationParams& op_params,
+                       const RuntimeShape& input_shape,
+                       const int16_t* input_data,
+                       const RuntimeShape& output_shape, float* output_data) {
+  gemmlowp::ScopedProfilingLabel label("Dequantize/Int16");
+  const int32 zero_point = op_params.zero_point;
+  const double scale = op_params.scale;
+  const int flat_size = MatchingFlatSize(input_shape, output_shape);
+
+  int i = 0;
+#ifdef USE_NEON
+  const float32x4_t scale_dup = vdupq_n_f32(static_cast<float>(scale));
+  const float32x4_t zero_times_scale_dup =
+      vdupq_n_f32(static_cast<float>(-zero_point * scale));
+  for (; i <= flat_size - 8; i += 8) {
+    const int16x4_t input_s16_low = vld1_s16(input_data + i);
+    const int16x4_t input_s16_high = vld1_s16(input_data + i + 4);
+    const int32x4_t val_low = vmovl_s16(input_s16_low);
+    const int32x4_t val_high = vmovl_s16(input_s16_high);
+
+    float32x4_t result_low, result_high;
+    ScaleWithNewZeroPoint(val_low, scale_dup, zero_times_scale_dup,
+                          &result_low);
+    ScaleWithNewZeroPoint(val_high, scale_dup, zero_times_scale_dup,
+                          &result_high);
+
+    vst1q_f32(output_data + i, result_low);
+    vst1q_f32(output_data + i + 4, result_high);
+  }
+#endif  // NEON
+  for (; i < flat_size; ++i) {
+    const int32 val = input_data[i];
+    const float result = static_cast<float>(scale * (val - zero_point));
     output_data[i] = result;
   }
 }
@@ -5823,6 +5902,23 @@ inline void AffineQuantize(const tflite::QuantizationParams& op_params,
   reference_ops::AffineQuantize(op_params, input_shape, input_data,
                                 output_shape, output_data);
 }
+
+#ifdef USE_NEON
+inline int32x4_t RoundToNearest(const float32x4_t input) {
+#if !defined(__aarch64__) && !defined(__SSE4_1__)
+  static const float32x4_t zero_val_dup = vdupq_n_f32(0.0f);
+  static const float32x4_t point5_val_dup = vdupq_n_f32(0.5f);
+  static const float32x4_t minus_point5_val_dup = vdupq_n_f32(-0.5f);
+
+  const uint32x4_t mask = vcltq_f32(input, zero_val_dup);
+  const float32x4_t round =
+      vbslq_f32(mask, minus_point5_val_dup, point5_val_dup);
+  return vcvtq_s32_f32(vaddq_f32(input, round));
+#else
+  return vcvtnq_s32_f32(input);
+#endif
+}
+#endif
 
 template <>
 inline void AffineQuantize(const tflite::QuantizationParams& op_params,
@@ -5843,11 +5939,6 @@ inline void AffineQuantize(const tflite::QuantizationParams& op_params,
   const int32x4_t zero_point_dup = vdupq_n_s32(zero_point);
   const int32x4_t min_val_dup = vdupq_n_s32(min_val);
   const int32x4_t max_val_dup = vdupq_n_s32(max_val);
-#if !defined(__aarch64__) && !defined(__SSE4_1__)
-  const float32x4_t zero_val_dup = vdupq_n_f32(0.0f);
-  const float32x4_t point5_val_dup = vdupq_n_f32(0.5f);
-  const float32x4_t minus_point5_val_dup = vdupq_n_f32(-0.5f);
-#endif
 
   for (; i <= flat_size - 8; i += 8) {
     const float* src_data_ptr = input_data + i;
@@ -5857,22 +5948,9 @@ inline void AffineQuantize(const tflite::QuantizationParams& op_params,
     input_val_0 = vmulq_f32(input_val_0, reverse_scale_dup);
     input_val_1 = vmulq_f32(input_val_1, reverse_scale_dup);
 
-    // Round the scaled values by comparing with zero.
-#if defined(__aarch64__) || defined(__SSE4_1__)
-    int32x4_t casted_val_0 = vcvtnq_s32_f32(input_val_0);
-    int32x4_t casted_val_1 = vcvtnq_s32_f32(input_val_1);
-#else
-    const uint32x4_t mask_0 = vcltq_f32(input_val_0, zero_val_dup);
-    const uint32x4_t mask_1 = vcltq_f32(input_val_1, zero_val_dup);
-    const float32x4_t round_0 =
-        vbslq_f32(mask_0, minus_point5_val_dup, point5_val_dup);
-    const float32x4_t round_1 =
-        vbslq_f32(mask_1, minus_point5_val_dup, point5_val_dup);
-    input_val_0 = vaddq_f32(input_val_0, round_0);
-    input_val_1 = vaddq_f32(input_val_1, round_1);
-    int32x4_t casted_val_0 = vcvtq_s32_f32(input_val_0);
-    int32x4_t casted_val_1 = vcvtq_s32_f32(input_val_1);
-#endif
+    int32x4_t casted_val_0 = RoundToNearest(input_val_0);
+    int32x4_t casted_val_1 = RoundToNearest(input_val_1);
+
     casted_val_0 = vaddq_s32(casted_val_0, zero_point_dup);
     casted_val_1 = vaddq_s32(casted_val_1, zero_point_dup);
 
@@ -5918,11 +5996,6 @@ inline void AffineQuantize(const tflite::QuantizationParams& op_params,
   const int32x4_t zero_point_dup = vdupq_n_s32(zero_point);
   const int32x4_t min_val_dup = vdupq_n_s32(min_val);
   const int32x4_t max_val_dup = vdupq_n_s32(max_val);
-#if !defined(__aarch64__) && !defined(__SSE4_1__)
-  const float32x4_t zero_val_dup = vdupq_n_f32(0.0f);
-  const float32x4_t point5_val_dup = vdupq_n_f32(0.5f);
-  const float32x4_t minus_point5_val_dup = vdupq_n_f32(-0.5f);
-#endif
 
   for (; i <= flat_size - 8; i += 8) {
     const float* src_data_ptr = input_data + i;
@@ -5932,22 +6005,9 @@ inline void AffineQuantize(const tflite::QuantizationParams& op_params,
     input_val_0 = vmulq_f32(input_val_0, reverse_scale_dup);
     input_val_1 = vmulq_f32(input_val_1, reverse_scale_dup);
 
-    // Round the scaled values by comparing with zero.
-#if defined(__aarch64__) || defined(__SSE4_1__)
-    int32x4_t casted_val_0 = vcvtnq_s32_f32(input_val_0);
-    int32x4_t casted_val_1 = vcvtnq_s32_f32(input_val_1);
-#else
-    const uint32x4_t mask_0 = vcltq_f32(input_val_0, zero_val_dup);
-    const uint32x4_t mask_1 = vcltq_f32(input_val_1, zero_val_dup);
-    const float32x4_t round_0 =
-        vbslq_f32(mask_0, minus_point5_val_dup, point5_val_dup);
-    const float32x4_t round_1 =
-        vbslq_f32(mask_1, minus_point5_val_dup, point5_val_dup);
-    input_val_0 = vaddq_f32(input_val_0, round_0);
-    input_val_1 = vaddq_f32(input_val_1, round_1);
-    int32x4_t casted_val_0 = vcvtq_s32_f32(input_val_0);
-    int32x4_t casted_val_1 = vcvtq_s32_f32(input_val_1);
-#endif
+    int32x4_t casted_val_0 = RoundToNearest(input_val_0);
+    int32x4_t casted_val_1 = RoundToNearest(input_val_1);
+
     casted_val_0 = vaddq_s32(casted_val_0, zero_point_dup);
     casted_val_1 = vaddq_s32(casted_val_1, zero_point_dup);
 
@@ -5994,11 +6054,6 @@ inline void AffineQuantize(const tflite::QuantizationParams& op_params,
   const int32x4_t zero_point_dup = vdupq_n_s32(zero_point);
   const int32x4_t min_val_dup = vdupq_n_s32(min_val);
   const int32x4_t max_val_dup = vdupq_n_s32(max_val);
-#if !defined(__aarch64__) && !defined(__SSE4_1__)
-  const float32x4_t zero_val_dup = vdupq_n_f32(0.0f);
-  const float32x4_t point5_val_dup = vdupq_n_f32(0.5f);
-  const float32x4_t minus_point5_val_dup = vdupq_n_f32(-0.5f);
-#endif
 
   for (; i <= flat_size - 8; i += 8) {
     const float* src_data_ptr = input_data + i;
@@ -6008,22 +6063,8 @@ inline void AffineQuantize(const tflite::QuantizationParams& op_params,
     input_val_0 = vmulq_f32(input_val_0, reverse_scale_dup);
     input_val_1 = vmulq_f32(input_val_1, reverse_scale_dup);
 
-    // Round the scaled values by comparing with zero.
-#if defined(__aarch64__) || defined(__SSE4_1__)
-    int32x4_t casted_val_0 = vcvtnq_s32_f32(input_val_0);
-    int32x4_t casted_val_1 = vcvtnq_s32_f32(input_val_1);
-#else
-    const uint32x4_t mask_0 = vcltq_f32(input_val_0, zero_val_dup);
-    const uint32x4_t mask_1 = vcltq_f32(input_val_1, zero_val_dup);
-    const float32x4_t round_0 =
-        vbslq_f32(mask_0, minus_point5_val_dup, point5_val_dup);
-    const float32x4_t round_1 =
-        vbslq_f32(mask_1, minus_point5_val_dup, point5_val_dup);
-    input_val_0 = vaddq_f32(input_val_0, round_0);
-    input_val_1 = vaddq_f32(input_val_1, round_1);
-    int32x4_t casted_val_0 = vcvtq_s32_f32(input_val_0);
-    int32x4_t casted_val_1 = vcvtq_s32_f32(input_val_1);
-#endif
+    int32x4_t casted_val_0 = RoundToNearest(input_val_0);
+    int32x4_t casted_val_1 = RoundToNearest(input_val_1);
 
     casted_val_0 = vaddq_s32(casted_val_0, zero_point_dup);
     casted_val_1 = vaddq_s32(casted_val_1, zero_point_dup);
