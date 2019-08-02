@@ -150,6 +150,7 @@ py_library(
         "//tensorflow/python:framework_ops",
         "//tensorflow/python:init_ops",
         "//tensorflow/python:init_ops_v2",
+        "//tensorflow/python:tf2",
         "//tensorflow/python:util",
         "//tensorflow/python:variables",
         "//tensorflow/python/distribute:distribute_lib",
@@ -1555,6 +1556,21 @@ tf_py_test(
     ],
     tags = [
         "no_oss",  # TODO(b/135021748) reenable
+        "notsan",
+    ],
+)
+
+tf_py_test(
+    name = "training_v2_utils_test",
+    size = "medium",
+    srcs = ["engine/training_v2_utils_test.py"],
+    additional_deps = [
+        ":keras",
+        "@absl_py//absl/testing:parameterized",
+        "//third_party/py/numpy",
+        "//tensorflow/python:client_testlib",
+    ],
+    tags = [
         "notsan",
     ],
 )
