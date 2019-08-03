@@ -2591,8 +2591,45 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         ":control_flow_util",
+        ":control_flow_util_v2",
         ":framework_ops",
         ":util",
+    ],
+)
+
+tf_py_test(
+    name = "control_flow_v2_toggles_test",
+    size = "small",
+    srcs = ["ops/control_flow_v2_toggles_test.py"],
+    additional_deps = [
+        ":control_flow_v2_toggles",
+        ":control_flow_util_v2",
+        ":client_testlib",
+        ":platform_test",
+    ],
+)
+
+tf_py_test(
+    name = "control_flow_v2_enable_test",
+    size = "small",
+    srcs = ["ops/control_flow_v2_enable_test.py"],
+    additional_deps = [
+        ":tf2",
+        ":control_flow_util",
+        ":client_testlib",
+        ":platform_test",
+    ],
+)
+
+tf_py_test(
+    name = "control_flow_v2_disable_test",
+    size = "small",
+    srcs = ["ops/control_flow_v2_disable_test.py"],
+    additional_deps = [
+        ":tf2",
+        ":control_flow_util",
+        ":client_testlib",
+        ":platform_test",
     ],
 )
 
@@ -3913,6 +3950,7 @@ cuda_py_test(
         ":array_ops",
         ":cond_v2",
         ":control_flow_ops",
+        ":control_flow_v2_toggles",
         ":embedding_ops",
         ":framework_for_generated_wrappers",
         ":framework_test_lib",
