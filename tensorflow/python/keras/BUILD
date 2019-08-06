@@ -3,7 +3,6 @@
 
 load("//tensorflow:tensorflow.bzl", "tf_py_test")
 load("//tensorflow:tensorflow.bzl", "cuda_py_test")
-load("//tensorflow/core:platform/default/distribute.bzl", "distribute_py_test")
 
 package(
     default_visibility = ["//visibility:public"],
@@ -493,6 +492,7 @@ py_library(
         ":generic_utils",
         ":tf_utils",
         "//tensorflow/python:array_ops",
+        "//tensorflow/python:control_flow_util",
         "//tensorflow/python:cudnn_rnn_ops_gen",
         "//tensorflow/python:dtypes",
         "//tensorflow/python:embedding_ops",
@@ -1588,6 +1588,7 @@ tf_py_test(
         "//tensorflow/python:client_testlib",
     ],
     tags = [
+        "nomac",  # TODO(mihaimaruseac): b/127695564
         "notsan",
     ],
 )
