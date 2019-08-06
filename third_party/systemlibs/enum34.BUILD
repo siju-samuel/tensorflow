@@ -3,11 +3,12 @@
 
 licenses(["notice"])  # MIT
 
-exports_files(["LICENSE"])
+filegroup(
+    name = "LICENSE",
+    visibility = ["//visibility:public"],
+)
 
 py_library(
     name = "enum",
-    srcs = ["enum34-1.1.6/enum/__init__.py"],
-    srcs_version = "PY2AND3",
     visibility = ["//visibility:public"],
 )
