@@ -21,7 +21,9 @@ limitations under the License.
 #include <asm/unistd.h>
 #include <linux/perf_event.h>
 #include <sys/ioctl.h>
+#include <syscall.h>
 #include <unistd.h>
+
 #include <cstdio>
 #endif
 
