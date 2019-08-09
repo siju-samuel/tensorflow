@@ -186,9 +186,6 @@ class StreamExecutor {
   //
   // Resets the internal contents of mem to be null-representative, but this
   // null-out effect should not be relied upon in client code.
-  //
-  // TODO(jlebar): Change this to accept a DeviceMemoryBase by value, see
-  // discussion in cl/195744342.
   void Deallocate(DeviceMemoryBase *mem);
 
   // Retrieves a mapping of active opaque device memory pointer to a string
@@ -453,9 +450,9 @@ class StreamExecutor {
   //
   // This is called by Stream::Launch() to delegate to the platform's launch
   // implementation in StreamExecutorInterface::Launch().
-  bool Launch(Stream *stream, const ThreadDim &thread_dims,
-              const BlockDim &block_dims, const KernelBase &kernel,
-              const KernelArgsArrayBase &args);
+  port::Status Launch(Stream *stream, const ThreadDim &thread_dims,
+                      const BlockDim &block_dims, const KernelBase &kernel,
+                      const KernelArgsArrayBase &args);
 
   // Gets-or-creates (creates with memoization) a FftSupport datatype that can
   // be used to execute FFT routines on the current platform.
@@ -474,6 +471,19 @@ class StreamExecutor {
   // Returns null if there was an error initializing the DNN support for the
   // underlying platform.
   dnn::DnnSupport *AsDnn();
+
+  // Gets-or-creates (creates with memoization) a BlasSupport datatype that can
+  // be used to execute BLAS routines on the current platform. This is typically
+  // not user-facing, as users will use the Stream::ThenBlas* family of routines
+  // to entrain BLAS operations. See blas.h for additional details.
+  //
+  // Ownership is not transferred to the caller -- ownership is retained by this
+  // object for memoization. This BLAS interface is also only expected to be
+  // used by a Stream for entraining calls to BLAS functionality.
+  //
+  // Returns null if there was an error initializing the BLAS support for the
+  // underlying platform.
+  blas::BlasSupport *AsBlas();
 
   // Turns StreamExecutor operation tracing on or off.
   void EnableTracing(bool enable);
@@ -495,9 +505,6 @@ class StreamExecutor {
 
   // Return an allocator which delegates to this stream executor for memory
   // allocation.
-  //
-  // Creates the allocator object on the first access, as the device ordinal
-  // of this stream_executor is not set in constructor.
   StreamExecutorMemoryAllocator *GetAllocator() { return &allocator_; }
 
  private:
@@ -512,18 +519,10 @@ class StreamExecutor {
   template <typename... Args>
   friend struct ThenBlasImpl;
 
-  // Gets-or-creates (creates with memoization) a BlasSupport datatype that can
-  // be used to execute BLAS routines on the current platform. This is typically
-  // not user-facing, as users will use the Stream::ThenBlas* family of routines
-  // to entrain BLAS operations. See blas.h for additional details.
-  //
-  // Ownership is not transferred to the caller -- ownership is retained by this
-  // object for memoization. This BLAS interface is also only expected to be
-  // used by a Stream for entraining calls to BLAS functionality.
-  //
-  // Returns null if there was an error initializing the BLAS support for the
-  // underlying platform.
-  blas::BlasSupport *AsBlas();
+  // Synchronously allocates size bytes on the underlying platform and returns
+  // an opaque void* representing that allocation. In the case of failure,
+  // nullptr is returned.
+  void *Allocate(uint64 size);
 
   // Gets-or-creates (creates with memoization) an RngSupport datatype that can
   // be used for random-number-generation routines on the current platform.
@@ -541,11 +540,6 @@ class StreamExecutor {
 
   // Without blocking the device, retrieve the current stream status.
   port::Status GetStatus(Stream *stream);
-
-  // Synchronously allocates size bytes on the underlying platform and returns
-  // an opaque void* representing that allocation. In the case of failure,
-  // nullptr is returned.
-  void *Allocate(uint64 size);
 
   // Finds and retrieves device memory for the symbol on the underlying
   // platform.
@@ -881,7 +875,8 @@ inline Stream &Stream::ThenLaunch(ThreadDim thread_dims, BlockDim block_dims,
     kernel.PackParams(&kernel_args, args...);
     DCHECK(parent_ != nullptr);
     bool ok =
-        parent_->Launch(this, thread_dims, block_dims, kernel, kernel_args);
+        parent_->Launch(this, thread_dims, block_dims, kernel, kernel_args)
+            .ok();
     if (!ok) {
       SetError();
       LOG(WARNING) << "parent failed to launch kernel: " << &kernel;

@@ -140,6 +140,12 @@ cc_library(
 )
 
 cc_library(
+    name = "prefetch",
+    hdrs = ["prefetch.h"],
+    deps = [":platform"],
+)
+
+cc_library(
     name = "stacktrace",
     srcs = glob(["*/stacktrace.h"]),
     hdrs = ["stacktrace.h"],
@@ -165,6 +171,16 @@ cc_library(
     hdrs = ["stringpiece.h"],
     deps = [
         "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "stringprintf",
+    srcs = ["stringprintf.cc"],
+    hdrs = ["stringprintf.h"],
+    deps = [
+        ":macros",
+        ":types",
     ],
 )
 
@@ -218,6 +234,7 @@ filegroup(
             "cpu_info.cc",
             "platform_strings.cc",
             "protobuf.cc",
+            "stringprintf.cc",
         ],
     ),
     visibility = ["//tensorflow/core:__pkg__"],
@@ -277,6 +294,7 @@ filegroup(
             "gif.h",
             "jpeg.h",
             "png.h",
+            "stringprintf.h",
             "**/cuda.h",
             "**/rocm.h",
             "**/stream_executor.h",
@@ -306,6 +324,7 @@ filegroup(
             "cpu_info.cc",
             "platform_strings.cc",
             "protobuf.cc",
+            "stringprintf.cc",
         ],
     ),
     visibility = ["//tensorflow/core:__pkg__"],

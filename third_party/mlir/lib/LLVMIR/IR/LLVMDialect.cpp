@@ -38,9 +38,8 @@ using namespace mlir::LLVM;
 #include "mlir/LLVMIR/LLVMOpsEnums.cpp.inc"
 
 //===----------------------------------------------------------------------===//
-// Printing/parsing for LLVM::ICmpOp.
+// Printing/parsing for LLVM::CmpOp.
 //===----------------------------------------------------------------------===//
-
 static void printICmpOp(OpAsmPrinter *p, ICmpOp &op) {
   *p << op.getOperationName() << " \"" << stringifyICmpPredicate(op.predicate())
      << "\" " << *op.getOperand(0) << ", " << *op.getOperand(1);
@@ -48,9 +47,19 @@ static void printICmpOp(OpAsmPrinter *p, ICmpOp &op) {
   *p << " : " << op.lhs()->getType();
 }
 
+static void printFCmpOp(OpAsmPrinter *p, FCmpOp &op) {
+  *p << op.getOperationName() << " \"" << stringifyFCmpPredicate(op.predicate())
+     << "\" " << *op.getOperand(0) << ", " << *op.getOperand(1);
+  p->printOptionalAttrDict(op.getAttrs(), {"predicate"});
+  *p << " : " << op.lhs()->getType();
+}
+
 // <operation> ::= `llvm.icmp` string-literal ssa-use `,` ssa-use
 //                 attribute-dict? `:` type
-static ParseResult parseICmpOp(OpAsmParser *parser, OperationState *result) {
+// <operation> ::= `llvm.fcmp` string-literal ssa-use `,` ssa-use
+//                 attribute-dict? `:` type
+template <typename CmpPredicateType>
+static ParseResult parseCmpOp(OpAsmParser *parser, OperationState *result) {
   Builder &builder = parser->getBuilder();
 
   Attribute predicate;
@@ -73,15 +82,27 @@ static ParseResult parseICmpOp(OpAsmParser *parser, OperationState *result) {
   if (!predicateStr)
     return parser->emitError(predicateLoc,
                              "expected 'predicate' attribute of string type");
-  Optional<ICmpPredicate> predicateValue =
-      symbolizeICmpPredicate(predicateStr.getValue());
-  if (!predicateValue)
-    return parser->emitError(predicateLoc)
-           << "'" << predicateStr.getValue()
-           << "' is an incorrect value of the 'predicate' attribute";
 
-  attrs[0].second = parser->getBuilder().getI64IntegerAttr(
-      static_cast<int64_t>(predicateValue.getValue()));
+  int64_t predicateValue = 0;
+  if (std::is_same<CmpPredicateType, ICmpPredicate>()) {
+    Optional<ICmpPredicate> predicate =
+        symbolizeICmpPredicate(predicateStr.getValue());
+    if (!predicate)
+      return parser->emitError(predicateLoc)
+             << "'" << predicateStr.getValue()
+             << "' is an incorrect value of the 'predicate' attribute";
+    predicateValue = static_cast<int64_t>(predicate.getValue());
+  } else {
+    Optional<FCmpPredicate> predicate =
+        symbolizeFCmpPredicate(predicateStr.getValue());
+    if (!predicate)
+      return parser->emitError(predicateLoc)
+             << "'" << predicateStr.getValue()
+             << "' is an incorrect value of the 'predicate' attribute";
+    predicateValue = static_cast<int64_t>(predicate.getValue());
+  }
+
+  attrs[0].second = parser->getBuilder().getI64IntegerAttr(predicateValue);
 
   // The result type is either i1 or a vector type <? x i1> if the inputs are
   // vectors.
@@ -730,7 +751,8 @@ void LLVMFuncOp::build(Builder *builder, OperationState *result, StringRef name,
 // Returns a null type if any of the types provided are non-LLVM types, or if
 // there is more than one output type.
 static Type buildLLVMFunctionType(Builder &b, ArrayRef<Type> inputs,
-                                  ArrayRef<Type> outputs, bool isVariadic,
+                                  ArrayRef<Type> outputs,
+                                  impl::VariadicFlag variadicFlag,
                                   std::string &errorMessage) {
   if (outputs.size() > 1) {
     errorMessage = "expected zero or one function result";
@@ -761,7 +783,8 @@ static Type buildLLVMFunctionType(Builder &b, ArrayRef<Type> inputs,
     errorMessage = "expected LLVM type for function results";
     return {};
   }
-  return LLVMType::getFunctionTy(llvmOutput, llvmInputs, isVariadic);
+  return LLVMType::getFunctionTy(llvmOutput, llvmInputs,
+                                 variadicFlag.isVariadic());
 }
 
 // Print the LLVMFuncOp.  Collects argument and result types and passes them
