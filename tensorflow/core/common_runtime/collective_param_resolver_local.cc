@@ -91,13 +91,16 @@ void CollectiveParamResolverLocal::CompleteGroupLocal(
 
       // Initialize group runtime details.
       CollectiveImplementationInterface* col_impl;
-#if defined(GOOGLE_CUDA)
+      // Try to lookup a NCCL collective kernel.  This will return error status
+      // if `NcclReduce` kernel is not present in the registry, e.g. on an
+      // environment that does not support NCCL.
       status = CollectiveRegistry::LookupParamResolverInstance("NcclReduce",
                                                                &col_impl);
-#else
-      status = CollectiveRegistry::LookupParamResolverInstance(
-          GetCollectiveName(cp, nccl_), &col_impl);
-#endif
+      if (!status.ok()) {
+        // Fallback to non-NCCL collective.
+        status = CollectiveRegistry::LookupParamResolverInstance(
+            GetCollectiveName(cp, /*nccl=*/false), &col_impl);
+      }
       if (status.ok()) {
         status = col_impl->InitializeCollectiveGroupRuntimeDetails(
             &gr->group.runtime_details);
