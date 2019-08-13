@@ -125,6 +125,7 @@ def TfExecutor_GraphOp : TfExecutor_Op<"graph",
 
   let extraClassDeclaration = [{
     Block &GetBody() { return getOperation()->getRegion(0).front(); }
+    FetchOp GetFetch();
   }];
 }
 
@@ -204,6 +205,7 @@ def TfExecutor_IslandOp : TfExecutor_Op<"island",
 
   let extraClassDeclaration = [{
     Block &GetBody() { return getOperation()->getRegion(0).front(); }
+    YieldOp GetYield();
   }];
 }
 
@@ -455,6 +457,13 @@ def TfExecutor_NextIterationSourceOp : TfExecutor_Op<"NextIteration.Source",
       result->attributes.append(attributes.begin(), attributes.end());
     }]>
    ];
+
+  let extraClassDeclaration = [{
+    NextIterationSinkOp GetSink() {
+      return cast<NextIterationSinkOp>(*token()->user_begin());
+    }
+  }];
+
 }
 
 
