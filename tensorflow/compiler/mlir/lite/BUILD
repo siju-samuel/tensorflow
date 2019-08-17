@@ -191,11 +191,13 @@ cc_library(
 cc_library(
     name = "tensorflow_lite_legalize_tf",
     srcs = [
+        "transforms/extract_ophint.cc",
         "transforms/generated_legalize_tf.inc",
         "transforms/generated_lower_static_tensor_list.inc",
         "transforms/generated_prepare_tf.inc",
         "transforms/legalize_tf.cc",
         "transforms/lower_static_tensor_list.cc",
+        "transforms/prepare_composite_functions_tf.cc",
         "transforms/prepare_tf.cc",
         "transforms/trim_functions_tf.cc",
     ],
@@ -207,6 +209,8 @@ cc_library(
         ":validators",
         "//tensorflow/compiler/mlir/lite/quantization:quantization_lib",
         "//tensorflow/compiler/mlir/tensorflow",
+        "//tensorflow/core:framework",
+        "//tensorflow/core:lib",
         "@com_google_absl//absl/memory",
         "@llvm//:support",
         "@local_config_mlir//:Analysis",
@@ -468,6 +472,7 @@ tf_cc_binary(
     deps = [
         ":flatbuffer_translate_lib",
         ":tensorflow_lite",
+        ":tf_tfl_passes",
         ":tf_tfl_translate_cl_options",
         ":tf_to_tfl_flatbuffer",
         "//tensorflow/compiler/mlir/tensorflow:translate_cl_options",
@@ -497,6 +502,33 @@ tf_cc_binary(
         "@local_config_mlir//:IR",
         "@local_config_mlir//:Parser",
         "@local_config_mlir//:Support",
+    ],
+)
+
+cc_library(
+    name = "tf_tfl_passes",
+    srcs = ["tf_tfl_passes.cc"],
+    hdrs = [
+        "tf_tfl_passes.h",
+    ],
+    deps = [
+        ":tensorflow_lite_legalize_tf",
+        ":tensorflow_lite_optimize",
+        ":tensorflow_lite_quantize",
+        "//tensorflow/compiler/mlir/tensorflow",
+        "//tensorflow/compiler/mlir/tensorflow:error_util",
+        "//tensorflow/compiler/mlir/tensorflow:tf_dialect_lib",
+        "//tensorflow/compiler/mlir/tensorflow:tf_dialect_passes",
+        "//tensorflow/compiler/mlir/tensorflow:translate_lib",
+        "@llvm//:support",
+        "@local_config_mlir//:Analysis",
+        "@local_config_mlir//:IR",
+        "@local_config_mlir//:Parser",
+        "@local_config_mlir//:Pass",
+        "@local_config_mlir//:QuantOps",
+        "@local_config_mlir//:QuantOpsDialectRegistration",
+        "@local_config_mlir//:Support",
+        "@local_config_mlir//:Transforms",
     ],
 )
 
