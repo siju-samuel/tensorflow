@@ -67,21 +67,26 @@ public:
   /// Array type utilities.
   LLVMType getArrayElementType();
   unsigned getArrayNumElements();
+  bool isArrayTy();
 
   /// Vector type utilities.
   LLVMType getVectorElementType();
+  bool isVectorTy();
 
   /// Function type utilities.
   LLVMType getFunctionParamType(unsigned argIdx);
   unsigned getFunctionNumParams();
   LLVMType getFunctionResultType();
+  bool isFunctionTy();
 
   /// Pointer type utilities.
   LLVMType getPointerTo(unsigned addrSpace = 0);
   LLVMType getPointerElementTy();
+  bool isPointerTy();
 
   /// Struct type utilities.
   LLVMType getStructElementType(unsigned i);
+  bool isStructTy();
 
   /// Utilities used to generate floating point types.
   static LLVMType getDoubleTy(LLVMDialect *dialect);
@@ -173,6 +178,13 @@ private:
 
   std::unique_ptr<detail::LLVMDialectImpl> impl;
 };
+
+/// Create an LLVM global containing the string "value" at the module containing
+/// surrounding the insertion point of builder. Obtain the address of that
+/// global and use it to compute the address of the first character in the
+/// string (operations inserted at the builder insertion point).
+Value *createGlobalString(Location loc, OpBuilder &builder, StringRef name,
+                          StringRef value, LLVM::LLVMDialect *llvmDialect);
 
 } // end namespace LLVM
 } // end namespace mlir

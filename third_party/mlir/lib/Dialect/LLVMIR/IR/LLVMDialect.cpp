@@ -1281,11 +1281,13 @@ LLVMType LLVMType::getArrayElementType() {
 unsigned LLVMType::getArrayNumElements() {
   return getUnderlyingType()->getArrayNumElements();
 }
+bool LLVMType::isArrayTy() { return getUnderlyingType()->isArrayTy(); }
 
 /// Vector type utilities.
 LLVMType LLVMType::getVectorElementType() {
   return get(getContext(), getUnderlyingType()->getVectorElementType());
 }
+bool LLVMType::isVectorTy() { return getUnderlyingType()->isVectorTy(); }
 
 /// Function type utilities.
 LLVMType LLVMType::getFunctionParamType(unsigned argIdx) {
@@ -1299,6 +1301,7 @@ LLVMType LLVMType::getFunctionResultType() {
       getContext(),
       llvm::cast<llvm::FunctionType>(getUnderlyingType())->getReturnType());
 }
+bool LLVMType::isFunctionTy() { return getUnderlyingType()->isFunctionTy(); }
 
 /// Pointer type utilities.
 LLVMType LLVMType::getPointerTo(unsigned addrSpace) {
@@ -1310,11 +1313,13 @@ LLVMType LLVMType::getPointerTo(unsigned addrSpace) {
 LLVMType LLVMType::getPointerElementTy() {
   return get(getContext(), getUnderlyingType()->getPointerElementType());
 }
+bool LLVMType::isPointerTy() { return getUnderlyingType()->isPointerTy(); }
 
 /// Struct type utilities.
 LLVMType LLVMType::getStructElementType(unsigned i) {
   return get(getContext(), getUnderlyingType()->getStructElementType(i));
 }
+bool LLVMType::isStructTy() { return getUnderlyingType()->isStructTy(); }
 
 /// Utilities used to generate floating point types.
 LLVMType LLVMType::getDoubleTy(LLVMDialect *dialect) {
@@ -1391,4 +1396,35 @@ LLVMType LLVMType::getVectorTy(LLVMType elementType, unsigned numElements) {
 }
 LLVMType LLVMType::getVoidTy(LLVMDialect *dialect) {
   return dialect->impl->voidTy;
+}
+
+//===----------------------------------------------------------------------===//
+// Utility functions.
+//===----------------------------------------------------------------------===//
+
+Value *mlir::LLVM::createGlobalString(Location loc, OpBuilder &builder,
+                                      StringRef name, StringRef value,
+                                      LLVM::LLVMDialect *llvmDialect) {
+  assert(builder.getInsertionBlock() &&
+         builder.getInsertionBlock()->getParentOp() &&
+         "expected builder to point to a block constained in an op");
+  auto module =
+      builder.getInsertionBlock()->getParentOp()->getParentOfType<ModuleOp>();
+  assert(module && "builder points to an op outside of a module");
+
+  // Create the global at the entry of the module.
+  OpBuilder moduleBuilder(module.getBodyRegion());
+  auto type = LLVM::LLVMType::getArrayTy(LLVM::LLVMType::getInt8Ty(llvmDialect),
+                                         value.size());
+  auto global = moduleBuilder.create<LLVM::GlobalOp>(
+      loc, type, /*isConstant=*/true, name, builder.getStringAttr(value));
+
+  // Get the pointer to the first character in the global string.
+  Value *globalPtr = builder.create<LLVM::AddressOfOp>(loc, global);
+  Value *cst0 = builder.create<LLVM::ConstantOp>(
+      loc, LLVM::LLVMType::getInt64Ty(llvmDialect),
+      builder.getIntegerAttr(builder.getIndexType(), 0));
+  return builder.create<LLVM::GEPOp>(
+      loc, LLVM::LLVMType::getInt8PtrTy(llvmDialect), globalPtr,
+      ArrayRef<Value *>({cst0, cst0}));
 }
