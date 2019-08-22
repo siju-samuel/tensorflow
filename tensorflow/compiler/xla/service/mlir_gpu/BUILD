@@ -55,10 +55,18 @@ cc_library(
     srcs = ["hlo_dialect_emitter.cc"],
     hdrs = ["hlo_dialect_emitter.h"],
     deps = [
+        "//tensorflow/compiler/mlir/xla:lxla",
         "//tensorflow/compiler/xla:status",
+        "//tensorflow/compiler/xla:status_macros",
         "//tensorflow/compiler/xla/service:buffer_assignment",
         "//tensorflow/compiler/xla/service:hlo",
+        "//tensorflow/compiler/xla/service/gpu:thunk",
+        "//tensorflow/compiler/xla/service/gpu:thunk_emitter",
+        "//tensorflow/core:lib",
+        "//tensorflow/core:stream_executor_no_cuda",
         "@com_google_absl//absl/container:flat_hash_map",
         "@local_config_mlir//:IR",
+        "@local_config_mlir//:LLVMDialect",
+        "@local_config_mlir//:StandardOps",
     ],
 )
