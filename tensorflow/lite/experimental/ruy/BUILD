@@ -2,6 +2,7 @@
 
 # TODO(b/123403203) actually make TFLite use ruy.
 
+load(":build_defs.bzl", "ruy_copts_avx2", "ruy_copts_skylake")
 load(":ruy_visibility.bzl", "ruy_visibility")
 load(":ruy_test_ext.bzl", "ruy_test_ext_defines", "ruy_test_ext_deps")
 load(":ruy_test.bzl", "ruy_benchmark", "ruy_benchmark_opt_sets", "ruy_test")
@@ -78,6 +79,15 @@ cc_library(
     hdrs = ["size_util.h"],
     copts = RUY_COPTS,
     deps = [":check_macros"],
+)
+
+cc_test(
+    name = "size_util_test",
+    srcs = ["size_util_test.cc"],
+    deps = [
+        ":size_util",
+        "@com_google_googletest//:gtest",
+    ],
 )
 
 cc_library(
@@ -195,15 +205,30 @@ cc_library(
 )
 
 cc_library(
-    name = "detect_dotprod",
+    name = "detect_arm",
     srcs = [
-        "detect_dotprod.cc",
+        "detect_arm.cc",
     ],
     hdrs = [
-        "detect_dotprod.h",
+        "detect_arm.h",
     ],
     copts = RUY_COPTS,
     visibility = ruy_visibility(),
+)
+
+cc_library(
+    name = "detect_x86",
+    srcs = [
+        "detect_x86.cc",
+    ],
+    hdrs = [
+        "detect_x86.h",
+    ],
+    copts = RUY_COPTS,
+    visibility = ruy_visibility(),
+    deps = [
+        ":platform",
+    ],
 )
 
 cc_library(
@@ -247,7 +272,8 @@ cc_library(
     deps = [
         ":allocator",
         ":check_macros",
-        ":detect_dotprod",
+        ":detect_arm",
+        ":detect_x86",
         ":path",
         ":thread_pool",
         ":trace",
@@ -345,7 +371,7 @@ cc_library(
     srcs = [
         "kernel_avx512.cc",
     ],
-    copts = RUY_COPTS,
+    copts = RUY_COPTS + ruy_copts_skylake(),
     deps = [
         ":check_macros",
         ":kernel_common",
@@ -360,7 +386,7 @@ cc_library(
     srcs = [
         "kernel_avx2.cc",
     ],
-    copts = RUY_COPTS,
+    copts = RUY_COPTS + ruy_copts_avx2(),
     deps = [
         ":check_macros",
         ":kernel_common",
@@ -440,7 +466,7 @@ cc_library(
     srcs = [
         "pack_avx512.cc",
     ],
-    copts = RUY_COPTS,
+    copts = RUY_COPTS + ruy_copts_skylake(),
     deps = [
         ":check_macros",
         ":matrix",
@@ -457,7 +483,7 @@ cc_library(
     srcs = [
         "pack_avx2.cc",
     ],
-    copts = RUY_COPTS,
+    copts = RUY_COPTS + ruy_copts_avx2(),
     deps = [
         ":check_macros",
         ":matrix",

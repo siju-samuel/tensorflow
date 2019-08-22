@@ -274,6 +274,22 @@ tf_proto_library(
     visibility = ["//visibility:public"],
 )
 
+tf_generate_proto_text_sources(
+    name = "attr_value_proto_text",
+    srcs = [
+        "framework/attr_value.proto",
+        "framework/resource_handle.proto",
+        "framework/tensor.proto",
+        "framework/tensor_shape.proto",
+        "framework/types.proto",
+    ],
+    srcs_relative_dir = "tensorflow/core/",
+    deps = [
+        ":lib_internal",
+        ":protos_all_proto_cc",
+    ],
+)
+
 tf_jspb_proto_library(
     name = "protos_all_jspb_proto",
     visibility = ["//visibility:public"],
@@ -747,6 +763,7 @@ cc_library(
         "@com_google_absl//absl/container:inlined_vector",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:optional",
+        "@com_google_absl//absl/types:variant",
     ],
 )
 
@@ -1766,8 +1783,7 @@ filegroup(
 filegroup(
     name = "mobile_srcs_no_runtime",
     srcs = [
-        ":protos_all_proto_text_srcs",
-        ":error_codes_proto_text_srcs",
+        ":attr_value_proto_text_srcs",
         "//tensorflow/core/platform/default/build_config:android_srcs",
         "//tensorflow/core/util/ctc:android_srcs",
         "//tensorflow/core/platform:legacy_srcs_no_runtime",
@@ -2362,6 +2378,7 @@ tf_proto_library_cc(
 LIB_INTERNAL_PRIVATE_HEADERS = [
     "framework/resource_handle.h",
     "//tensorflow/core/platform:legacy_lib_internal_headers",
+    "//tensorflow/core/platform:scanner.h",
     "//tensorflow/core/platform:str_util.h",
     "//tensorflow/core/lib/bfloat16:bfloat16.h",
     "//tensorflow/core/lib/gtl:legacy_lib_gtl_all_headers",
@@ -2479,6 +2496,7 @@ cc_library(
                ":lib_hash_crc32c_accelerate_internal",
                ":lib_proto_parsing",
                "@com_google_absl//absl/memory",
+               "@com_google_absl//absl/types:variant",
                "@com_google_absl//absl/strings",
                "//third_party/eigen3",
                "//tensorflow/core/lib/bfloat16",
@@ -2486,6 +2504,7 @@ cc_library(
                "//tensorflow/core/platform:annotation",
                "//tensorflow/core/platform:cpu_info",
                "//tensorflow/core/platform:platform_strings",
+               "//tensorflow/core/platform:scanner",
                "//tensorflow/core/platform:stringprintf",
                "//tensorflow/core/platform:str_util",
                "//tensorflow/core/platform/default/build_config:platformlib",
@@ -2709,17 +2728,6 @@ tf_proto_library(
     provide_cc_alias = True,
 )
 
-tf_generate_proto_text_sources(
-    name = "error_codes_proto_text",
-    srcs = ERROR_CODES_PROTO_SRCS,
-    protodeps = [],
-    srcs_relative_dir = "tensorflow/core/",
-    deps = [
-        ":error_codes_proto_cc",
-        ":lib_internal",
-    ],
-)
-
 tf_proto_library(
     name = "protos_all_proto",
     srcs = COMMON_PROTO_SRCS + ADDITIONAL_CORE_PROTO_SRCS,
@@ -2727,32 +2735,6 @@ tf_proto_library(
     make_default_target_header_only = True,
     protodeps = [
         ":error_codes_proto",
-    ],
-)
-
-tf_generate_proto_text_sources(
-    name = "protos_all_proto_text",
-    srcs = COMMON_PROTO_SRCS,
-    protodeps = ERROR_CODES_PROTO_SRCS,
-    srcs_relative_dir = "tensorflow/core/",
-    visibility = ["//visibility:public"],
-    deps = [
-        ":error_codes_proto_text",
-        ":lib_internal",
-        ":protos_all_proto_cc",
-    ],
-)
-
-cc_library(
-    name = "proto_text",
-    hdrs = [
-        ":error_codes_proto_text_hdrs",
-        ":protos_all_proto_text_hdrs",
-    ],
-    deps = [
-        ":lib",
-        ":lib_internal",
-        ":protos_all_cc",
     ],
 )
 
@@ -2916,11 +2898,10 @@ tf_cuda_library(
     deps = [
         ":allocator_registry_impl",
         ":allocator",
+        ":attr_value_proto_text",
         ":feature_util",
         ":lib",
         ":lib_internal",
-        ":protos_all_proto_text",
-        ":error_codes_proto_text",
         ":protos_all_cc",
         ":stats_calculator_portable",
         ":version_lib",
@@ -3062,7 +3043,6 @@ tf_cuda_library(
         ":framework_internal",
         ":lib",
         ":lib_internal",
-        ":proto_text",
         ":protos_all_cc",
         "//third_party/eigen3",
         "@com_google_absl//absl/container:flat_hash_map",
@@ -3121,7 +3101,6 @@ tf_cuda_library(
         ":framework_internal",
         ":lib",
         ":lib_internal",
-        ":proto_text",
         ":protos_all_cc",
         "@com_google_absl//absl/container:flat_hash_set",
         "//third_party/eigen3",
@@ -3269,7 +3248,6 @@ tf_cuda_library(
         ":framework_internal",
         ":lib",
         ":lib_internal",
-        ":proto_text",
         ":protos_all_cc",
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/memory",
@@ -3288,7 +3266,6 @@ tf_cuda_library(
     hdrs = CORE_CPU_LIB_HEADERS,
     deps = [
         ":core_cpu_base",
-        ":proto_text",
         "//tensorflow/core/grappler:grappler_item",
     ] + if_static([":core_cpu_impl"]) + tf_protos_all() + tf_protos_grappler(),
 )
@@ -3298,7 +3275,6 @@ tf_cuda_library(
     hdrs = CORE_CPU_LIB_HEADERS,
     deps = [
         ":core_cpu_base_no_ops",
-        ":proto_text",
         "//tensorflow/core/grappler:grappler_item",
     ] + tf_protos_all() + tf_protos_grappler(),
 )
@@ -3316,7 +3292,6 @@ tf_cuda_library(
         ":framework",
         ":graph",
         ":lib",
-        ":proto_text",
         ":protos_all_cc",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
@@ -3396,7 +3371,6 @@ tf_cuda_library(
         ":lib",
         ":lib_experimental",
         ":lib_internal",
-        ":proto_text",
         ":protos_all_cc",
         "//tensorflow/core/debug:debug_graph_utils",
         "//tensorflow/core/kernels:function_ops",
@@ -3421,7 +3395,6 @@ cc_library(
         ":framework",
         ":lib",
         ":lib_internal",
-        ":proto_text",
         ":protos_all_cc",
     ],
     alwayslink = 1,
@@ -3649,7 +3622,6 @@ cc_library(
         ":framework_internal",
         ":lib",
         ":lib_internal",
-        ":proto_text",
         "//third_party/eigen3",
         "@local_config_sycl//sycl",
     ],
@@ -3784,6 +3756,7 @@ tf_cc_tests(
         "//tensorflow/core/platform:net_test.cc",
         "//tensorflow/core/platform:port_test.cc",
         "//tensorflow/core/platform:profile_utils/cpu_utils_test.cc",
+        "//tensorflow/core/platform:scanner_test.cc",
         "//tensorflow/core/platform:stacktrace_handler_test.cc",
         "//tensorflow/core/platform:str_util_test.cc",
         "//tensorflow/core/platform:stringpiece_test.cc",
@@ -3799,6 +3772,7 @@ tf_cc_tests(
         ":protos_all_cc",
         ":test",
         ":test_main",
+        "//tensorflow/core/platform:scanner",
         "//tensorflow/core/platform:str_util",
         "//tensorflow/core/platform:stringpiece",
         "//tensorflow/core/platform:stringprintf",
