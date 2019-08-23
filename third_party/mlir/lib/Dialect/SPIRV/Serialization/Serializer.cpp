@@ -130,7 +130,11 @@ private:
     return funcIDMap.lookup(fnName);
   }
 
-  LogicalResult processMemoryModel();
+  void processCapability();
+
+  void processExtension();
+
+  void processMemoryModel();
 
   LogicalResult processConstantOp(spirv::ConstantOp op);
 
@@ -318,6 +322,8 @@ LogicalResult Serializer::serialize() {
     return failure();
 
   // TODO(antiagainst): handle the other sections
+  processCapability();
+  processExtension();
   processMemoryModel();
 
   // Iterate over the module body to serialze it. Assumptions are that there is
@@ -356,12 +362,38 @@ void Serializer::collect(SmallVectorImpl<uint32_t> &binary) {
 // Module structure
 //===----------------------------------------------------------------------===//
 
-LogicalResult Serializer::processMemoryModel() {
+void Serializer::processCapability() {
+  auto caps = module.getAttrOfType<ArrayAttr>("capabilities");
+  if (!caps)
+    return;
+
+  for (auto cap : caps.getValue()) {
+    auto capStr = cap.cast<StringAttr>().getValue();
+    auto capVal = spirv::symbolizeCapability(capStr);
+    encodeInstructionInto(capabilities, spirv::Opcode::OpCapability,
+                          {static_cast<uint32_t>(*capVal)});
+  }
+}
+
+void Serializer::processExtension() {
+  auto exts = module.getAttrOfType<ArrayAttr>("extensions");
+  if (!exts)
+    return;
+
+  SmallVector<uint32_t, 16> extName;
+  for (auto ext : exts.getValue()) {
+    auto extStr = ext.cast<StringAttr>().getValue();
+    extName.clear();
+    encodeStringLiteralInto(extName, extStr);
+    encodeInstructionInto(extensions, spirv::Opcode::OpExtension, extName);
+  }
+}
+
+void Serializer::processMemoryModel() {
   uint32_t mm = module.getAttrOfType<IntegerAttr>("memory_model").getInt();
   uint32_t am = module.getAttrOfType<IntegerAttr>("addressing_model").getInt();
 
-  return encodeInstructionInto(memoryModel, spirv::Opcode::OpMemoryModel,
-                               {am, mm});
+  encodeInstructionInto(memoryModel, spirv::Opcode::OpMemoryModel, {am, mm});
 }
 
 LogicalResult Serializer::processConstantOp(spirv::ConstantOp op) {

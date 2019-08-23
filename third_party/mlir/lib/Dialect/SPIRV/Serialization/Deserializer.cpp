@@ -1,4 +1,3 @@
-//===- Deserializer.cpp - MLIR SPIR-V Deserialization ---------------------===//
 //
 // Copyright 2019 The MLIR Authors.
 //
@@ -29,6 +28,7 @@
 #include "mlir/Support/LogicalResult.h"
 #include "mlir/Support/StringExtras.h"
 #include "llvm/ADT/Sequence.h"
+#include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/bit.h"
 
@@ -75,6 +75,20 @@ private:
 
   /// Processes SPIR-V module header in `binary`.
   LogicalResult processHeader();
+
+  /// Processes the SPIR-V OpCapability with `operands` and updates bookkeeping
+  /// in the deserializer.
+  LogicalResult processCapability(ArrayRef<uint32_t> operands);
+
+  /// Attaches all collected capabilites to `module` as an attribute.
+  void attachCapabilities();
+
+  /// Processes the SPIR-V OpExtension with `operands` and updates bookkeeping
+  /// in the deserializer.
+  LogicalResult processExtension(ArrayRef<uint32_t> operands);
+
+  /// Attaches all collected extensions to `module` as an attribute.
+  void attachExtensions();
 
   /// Processes the SPIR-V OpMemoryModel with `operands` and updates `module`.
   LogicalResult processMemoryModel(ArrayRef<uint32_t> operands);
@@ -225,6 +239,12 @@ private:
 
   OpBuilder opBuilder;
 
+  /// The list of capabilities used by the module.
+  llvm::SmallSetVector<spirv::Capability, 4> capabilities;
+
+  /// The list of extensions used by the module.
+  llvm::SmallSetVector<StringRef, 2> extensions;
+
   // Result <id> to type mapping.
   DenseMap<uint32_t, Type> typeMap;
 
@@ -305,6 +325,10 @@ LogicalResult Deserializer::deserialize() {
     }
   }
 
+  // Attaches the capabilities/extensions as an attribute to the module.
+  attachCapabilities();
+  attachExtensions();
+
   return success();
 }
 
@@ -335,6 +359,58 @@ LogicalResult Deserializer::processHeader() {
   // TODO(antiagainst): generator number, bound, schema
   curOffset = spirv::kHeaderWordCount;
   return success();
+}
+
+LogicalResult Deserializer::processCapability(ArrayRef<uint32_t> operands) {
+  if (operands.size() != 1)
+    return emitError(unknownLoc, "OpMemoryModel must have one parameter");
+
+  auto cap = spirv::symbolizeCapability(operands[0]);
+  if (!cap)
+    return emitError(unknownLoc, "unknown capability: ") << operands[0];
+
+  capabilities.insert(*cap);
+  return success();
+}
+
+void Deserializer::attachCapabilities() {
+  if (capabilities.empty())
+    return;
+
+  SmallVector<StringRef, 2> caps;
+  caps.reserve(capabilities.size());
+
+  for (auto cap : capabilities) {
+    caps.push_back(spirv::stringifyCapability(cap));
+  }
+
+  module->setAttr("capabilities", opBuilder.getStrArrayAttr(caps));
+}
+
+LogicalResult Deserializer::processExtension(ArrayRef<uint32_t> operands) {
+  if (operands.empty()) {
+    return emitError(
+        unknownLoc,
+        "OpExtension must have a literal string for the extension name");
+  }
+
+  unsigned wordIndex = 0;
+  StringRef extName = decodeStringLiteral(operands, wordIndex);
+  if (wordIndex != operands.size()) {
+    return emitError(unknownLoc,
+                     "unexpected trailing words in OpExtension instruction");
+  }
+
+  extensions.insert(extName);
+  return success();
+}
+
+void Deserializer::attachExtensions() {
+  if (extensions.empty())
+    return;
+
+  module->setAttr("extensions",
+                  opBuilder.getStrArrayAttr(extensions.getArrayRef()));
 }
 
 LogicalResult Deserializer::processMemoryModel(ArrayRef<uint32_t> operands) {
@@ -1102,6 +1178,10 @@ LogicalResult Deserializer::processInstruction(spirv::Opcode opcode,
   // First dispatch all the instructions whose opcode does not correspond to
   // those that have a direct mirror in the SPIR-V dialect
   switch (opcode) {
+  case spirv::Opcode::OpCapability:
+    return processCapability(operands);
+  case spirv::Opcode::OpExtension:
+    return processExtension(operands);
   case spirv::Opcode::OpMemoryModel:
     return processMemoryModel(operands);
   case spirv::Opcode::OpEntryPoint:

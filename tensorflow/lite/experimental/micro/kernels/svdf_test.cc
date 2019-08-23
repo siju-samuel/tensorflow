@@ -154,7 +154,7 @@ void TestSVDF(const int batch_size, const int num_units, const int input_size,
   tensors[2] =
       CreateFloatTensor(weights_time_data, weights_time_dims, "weights_time");
   tensors[3] = CreateFloatTensor(activation_state_data, activation_state_dims,
-                                 "activation_state");
+                                 "activation_state", true /* is_variable */);
   tensors[4] = CreateFloatTensor(output_data, output_dims, "output");
   tensors[5] = CreateFloatTensor(scratch_data, scratch_dims, "scratch");
 
@@ -222,16 +222,6 @@ void TestSVDF(const int batch_size, const int num_units, const int input_size,
   }
 }
 
-// Temp method until cl/263242167 lands:
-void ResetVariableTensor(float* tensor_data, size_t len) {
-  int v = 0;
-  char* b = reinterpret_cast<char*>(tensor_data);
-  for (size_t i = 0; i < len; i++) {
-    *b = v;
-    b++;
-  }
-}
-
 }  // namespace
 }  // namespace testing
 }  // namespace tflite
@@ -279,10 +269,6 @@ TF_LITE_MICRO_TEST(BlackBoxTestRank1) {
   const int activation_state_dims_count =
       batch_size * memory_size * num_filters;
   float activation_state_data[activation_state_dims_count];
-
-  // TODO(kreeger): drop when cl/263242167 lands:
-  tflite::testing::ResetVariableTensor(
-      activation_state_data, sizeof(float) * activation_state_dims_count);
 
   const int scratch_dims_count = batch_size * num_filters;
   float scratch_data[scratch_dims_count];
@@ -355,10 +341,6 @@ TF_LITE_MICRO_TEST(BlackBoxTestRank2) {
   const int activation_state_dims_count =
       batch_size * memory_size * num_filters;
   float activation_state_data[activation_state_dims_count];
-
-  // TODO(kreeger): drop when cl/263242167 lands:
-  tflite::testing::ResetVariableTensor(
-      activation_state_data, sizeof(float) * activation_state_dims_count);
 
   const int scratch_dims_count = batch_size * num_filters;
   float scratch_data[scratch_dims_count];

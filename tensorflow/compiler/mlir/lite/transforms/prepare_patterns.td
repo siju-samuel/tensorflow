@@ -74,15 +74,7 @@ def : Pattern<
      (HasNoUseOf:$root__3), (HasNoUseOf:$root__4),
      (HasNoUseOf:$root__5)]>;
 
-// TODO(jpienaar): Move to opbase something more general.
-def TFi32ElementsAttr : Attr<CPred<"$_self.isa<DenseIntElementsAttr>">,
-                                   "scalar int attribute"> {
-  let storageType = [{ DenseIntElementAttr }];
-  let constBuilderCall = "$_builder.getDenseElementsAttr("
-    "$_builder.getTensorType({}, $_builder.getIntegerType(32)), "
-      "{$_builder.getI32IntegerAttr($0)})";
-}
-class TFi32<int v> : ConstantAttr<TFi32ElementsAttr, !cast<string>(v)>;
+class TFi32<int v> : ConstantAttr<I32ElementsAttr, !cast<string>(v)>;
 
 // Matmul without transpose on b to matmul with explicit transpose op and
 // transposed b.
@@ -109,6 +101,7 @@ def : Pat<(TF_StopGradientOp $arg), (TF_IdentityOp $arg)>;
 // Op removal patterns.
 //===----------------------------------------------------------------------===//
 def : Pat<(TF_IdentityOp $arg), (replaceWithValue $arg)>;
+def : Pat<(TF_IdentityNOp $arg), (replaceWithValue $arg)>;
 
 //===----------------------------------------------------------------------===//
 // Op quantization pass-through patterns.
