@@ -20,6 +20,17 @@ filegroup(
 )
 
 cc_library(
+    name = "op_name_mapper",
+    srcs = ["op_name_mapper.cc"],
+    hdrs = ["op_name_mapper.h"],
+    deps = [
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@llvm//:support",
+        "@local_config_mlir//:IR",
+    ],
+)
+
+cc_library(
     name = "tf_mlir_opt_main",
     srcs = ["tf_mlir_opt_main.cc"],
     copts = ["-std=c++14"],
@@ -33,8 +44,8 @@ cc_library(
         "//tensorflow/compiler/mlir/tensorflow",
         "//tensorflow/compiler/mlir/tensorflow:tensorflow_dialect_registration",
         "//tensorflow/compiler/mlir/tensorflow:tf_dialect_passes",
-        "//tensorflow/compiler/mlir/xla",
-        "//tensorflow/compiler/mlir/xla:lxla",
+        "//tensorflow/compiler/mlir/xla:hlo",
+        "//tensorflow/compiler/mlir/xla:lhlo",
         "//tensorflow/compiler/mlir/xla:xla_dialect_registration",
         "//tensorflow/compiler/mlir/xla:xla_legalize_control_flow",
         "//tensorflow/compiler/mlir/xla:xla_legalize_tf",

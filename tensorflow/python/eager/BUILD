@@ -67,6 +67,7 @@ py_library(
         ":execute",
         ":execution_callbacks",
         ":forwardprop",
+        ":forwardprop_util",
         ":function",
         ":graph_only_ops",
         ":monitoring",
@@ -270,6 +271,7 @@ cuda_py_test(
     srcs = ["forwardprop_test.py"],
     additional_deps = [
         ":forwardprop",
+        ":forwardprop_util",
         ":test",
     ],
     shard_count = 5,
@@ -529,6 +531,16 @@ py_library(
     ],
 )
 
+py_library(
+    name = "forwardprop_util",
+    srcs = ["forwardprop_util.py"],
+    srcs_version = "PY2AND3",
+    visibility = ["//tensorflow:internal"],
+    deps = [
+        "//tensorflow/python:pywrap_tensorflow",
+    ],
+)
+
 cuda_py_test(
     name = "benchmarks_test",
     srcs = ["benchmarks_test.py"],
@@ -683,12 +695,10 @@ cuda_py_test(
     name = "def_function_xla_jit_test",
     srcs = ["def_function_xla_jit_test.py"],
     additional_deps = [
-        ":backprop",
         ":def_function",
         "//tensorflow/python:client_testlib",
         "//tensorflow/python:constant_op",
         "//tensorflow/python:framework_ops",
-        "//tensorflow/python:resource_variable_ops",
     ],
     tags = [
         "no_mac",
