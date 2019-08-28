@@ -157,9 +157,13 @@ class tstring {
 
   size_t size() const { return str_.size(); }
 
+  size_t capacity() const { return str_.capacity(); }
+
   const char* c_str() const { return str_.c_str(); }
 
   const char* data() const { return str_.data(); }
+
+  char back() const { return str_.back(); }
 
   const char& operator[](size_t i) const { return str_[i]; }
 
@@ -206,6 +210,17 @@ class tstring {
 
     return *this;
   }
+
+  void swap(tstring& str) { str_.swap(str.str_); }
+
+  tstring& insert(size_t pos, const tstring& str, size_t subpos,
+                  size_t sublen) {
+    str_.insert(pos, str.str_, subpos, sublen);
+
+    return *this;
+  }
+
+  void push_back(char ch) { str_.push_back(ch); }
 
   friend const tstring operator+(const tstring& a, const tstring& b);
   friend bool operator==(const char* a, const tstring& b);
