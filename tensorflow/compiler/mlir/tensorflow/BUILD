@@ -10,7 +10,7 @@ package_group(
     name = "friends",
     includes = ["@local_config_mlir//:subpackages"],
     packages = [
-        "//tensorflow/compiler/mlir/...",
+        "//tensorflow/compiler/...",
         "//tensorflow/python/...",
     ],
 )
@@ -122,6 +122,7 @@ cc_library(
         "ir/tf_ops.cc",
         "ir/tf_ops.cc.inc",
         "ir/tf_ops.h.inc",
+        "ir/tf_types.cc",
         "transforms/cluster_formation.cc",
         "transforms/cluster_outlining.cc",
         "transforms/executor_island_coarsening.cc",

@@ -381,6 +381,7 @@ class ReverseV2Test(test_util.TensorFlowTestCase):
   # Note: this test passes placeholder as constant axis is validated
   # in shape function (see testInvalidAxis)
   @test_util.run_deprecated_v1
+  @test_util.disable_xla("b/140155173")
   def testInvalid(self):
     x_np = np.array([[1, 2, 3], [4, 5, 6]], dtype=np.float32)
     axis = array_ops.placeholder(dtypes.int32)
@@ -1418,6 +1419,40 @@ class SnapshotOpTest(test_util.TensorFlowTestCase):
         x = constant_op.constant([0, 1, 2, 3], dtype=dtype)
         y = gen_array_ops.snapshot(x)
         self.assertAllEqual(y.eval(), [0, 1, 2, 3])
+
+
+@test_util.run_all_in_graph_and_eager_modes
+@test_util.disable_xla("b/140109958")
+class QuantizeAndDequantizeTest(test_util.TensorFlowTestCase):
+
+  def _scale_per_slice(self, shape, axis, values):
+    out = np.take(values, np.remainder(np.arange(np.prod(shape)),
+                                       len(values))).reshape(shape)
+    if axis is not None:
+      scale_shape = [1] * 4
+      scale_shape[axis] = shape[axis]
+      out *= np.arange(1, shape[axis] + 1).reshape(scale_shape)
+    return out
+
+  def testAxis(self):
+    shape = np.array([2, 3, 4, 5])
+    values = np.array([-1, -0.5, 0, 0.3, 0.8, 0.555, 0.5],
+                      dtype=np.float32)
+    quant_values = np.array([-1, -0.5, 0, 38.0/128, 102.0/128, 71.0/128, 0.5],
+                            dtype=np.float32)
+    for axis in [None, 0, 1, 2, 3]:
+      inputs = constant_op.constant(self._scale_per_slice(shape, axis, values))
+      expected = self._scale_per_slice(shape, axis, quant_values)
+      unused_minmax_value = 0 if axis is None else []
+      fake_quantized = self.evaluate(array_ops.quantize_and_dequantize(
+          inputs, unused_minmax_value, unused_minmax_value,
+          range_given=False, round_mode="HALF_UP", axis=axis))
+      self.assertAllEqual(fake_quantized, expected)
+      if axis is not None:
+        fake_quantized = self.evaluate(array_ops.quantize_and_dequantize(
+            inputs, unused_minmax_value, unused_minmax_value, range_given=False,
+            axis=(axis - 4)))
+        self.assertAllClose(fake_quantized, expected)
 
 
 @test_util.run_all_in_graph_and_eager_modes

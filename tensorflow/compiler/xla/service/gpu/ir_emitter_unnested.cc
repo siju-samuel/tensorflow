@@ -2456,9 +2456,10 @@ void IrEmitterUnnested::EmitTileElementForReduction(
 
 // Emits a kernel for the hlo instruction using the given tiling scheme.
 void IrEmitterUnnested::EmitBlock(KernelCodegenInfo* kernel_info,
-                                  KernelSupportLibrary* ksl,
-                                  llvm::Type* index_ty,
-                                  TileGenerator emit_one_tile) {
+                                  KernelSupportLibrary* ksl, llvm::Value* y,
+                                  llvm::Value* x,
+                                  TileElementGenerator tile_generator) {
+  llvm::Type* index_ty = kernel_info->GetIndexType();
   KernelMappingScheme* mapping_scheme = kernel_info->GetKernelMappingScheme();
   absl::Span<const int64> dims_in_tile = mapping_scheme->GetDimensionsInTiles();
   absl::Span<const int64> dims_in_block =
@@ -2505,7 +2506,7 @@ void IrEmitterUnnested::EmitBlock(KernelCodegenInfo* kernel_info,
       mapping_scheme->GetDimensionsInElements();
 
   // Emit the tile with a given tile_index, by calculating the tight bounds for
-  // each dimension of the tile and then calling emit_one_tile.
+  // each dimension of the tile and then calling tile_generator.
   auto emit_one_tile_for_tile_index = [&](const IrArray::Index& tile_index) {
     std::vector<llvm::Value*> output_tile_bounds(3);
     for (int i = KernelMappingScheme::DimY; i < KernelMappingScheme::DimTot;
@@ -2523,7 +2524,8 @@ void IrEmitterUnnested::EmitBlock(KernelCodegenInfo* kernel_info,
 
     IrArray::Index tile_origin =
         mapping_scheme->GetElementIndexForTileOrigin(tile_index);
-    emit_one_tile(tile_origin, output_tile_bounds);
+    tile_generator(y, x, tile_origin, "output", output_tile_bounds[1],
+                   output_tile_bounds[2], ksl);
   };
 
   const IrArray::Index starting_block =
@@ -2574,18 +2576,7 @@ void IrEmitterUnnested::EmitKernel(
           ? b_.getInt64Ty()
           : GetIndexTypeForKernel(unnested_hlo,
                                   launch_dimensions.launch_bound(), &b_);
-
-  // For multioutput fusion, one thread needs to output a tuple with pointers to
-  // all the individual outputs.  We could do this at any point in the kernel,
-  // but we do it at the beginning in the hopes of reducing register pressure,
-  // since we touch threadIdx.x and blockIdx.x at the beginning of the kernel
-  // *anyway*.
-  if (!reduction_info && unnested_hlo->IsMultiOutputFusion()) {
-    KernelSupportLibrary{&b_}.If("emit_mof_tuple", IsBlock0Thread0(&b_), [&] {
-      llvm_ir::EmitTuple(GetIrArray(*unnested_hlo, *unnested_hlo),
-                         ConstructIrArrayForOutputs(*unnested_hlo), &b_);
-    });
-  }
+  kernel_info->SetIndexType(index_ty);
 
   // Calculate the starting element coordinate within a tile for the current
   // thread, (y, x) from thread_id.
@@ -2596,17 +2587,10 @@ void IrEmitterUnnested::EmitKernel(
   kernel_info->SetLaneId(
       mapping_scheme->GetNumberOfThreadsForDimensionX() == kWarpSize ? x
                                                                      : nullptr);
-  kernel_info->SetIndexType(index_ty);
   KernelSupportLibrary ksl(&b_, llvm_ir::UnrollMode::kDefaultUnroll);
 
   block_prologue_generator(unnested_hlo, kernel_info);
-  EmitBlock(kernel_info, &ksl, index_ty,
-            [&](const IrArray::Index& output_tile_origin,
-                absl::Span<llvm::Value* const> output_tile_bounds) {
-              tile_element_generator(y, x, output_tile_origin, "output",
-                                     output_tile_bounds[1],
-                                     output_tile_bounds[2], &ksl);
-            });
+  EmitBlock(kernel_info, &ksl, y, x, tile_element_generator);
   block_epilogue_generator(unnested_hlo, kernel_info);
   UpdateLaunchDimensions(launch_dimensions, kernel_thunk,
                          ir_emitter_context_->llvm_module());
@@ -2643,9 +2627,9 @@ void IrEmitterUnnested::EmitHlo021Tile(
   constexpr int kNumRows = 4;
   KernelMappingScheme mapping_scheme(
       reduced_output_dims, /*tile_size_y=*/kWarpSize,
-      /*tile_size_x=*/kWarpSize, /*req_block_sizes=*/{1, 1, 1},
+      /*tile_size_x=*/kWarpSize, /*block_size_z=*/1,
       /*num_threads_y=*/kNumRows,
-      /*num_threads_x=*/kWarpSize, &b_);
+      /*num_threads_x=*/kWarpSize, /*is_dilated_x=*/false, &b_);
   KernelCodegenInfo kernel_info(&mapping_scheme);
 
   std::vector<IrArray> param_arrays;
@@ -2746,12 +2730,26 @@ void IrEmitterUnnested::EmitHlo021Tile(
           EmitCallToTargetIntrinsic(TargetIntrinsicID::kBarrierId, {}, {}, &b_);
         }
       };
-  BlockPrologueGenerator block_prologue_generator = [](HloInstruction*,
-                                                       KernelCodegenInfo*) {};
-  BlockEpilogueGenerator block_epilogue_generator = [](HloInstruction*,
-                                                       KernelCodegenInfo*) {};
-  EmitKernel(hlo, kernel_thunk, &kernel_info, tile_generator,
-             block_prologue_generator, block_epilogue_generator);
+
+  BlockPrologueGenerator hlo021_prologue = [&](HloInstruction* hlo,
+                                               KernelCodegenInfo* kernel_info) {
+    // For multioutput fusion, one thread needs to output a tuple
+    // with pointers to all the individual outputs.  We could do this
+    // at any point in the kernel, but we do it at the beginning in
+    // the hopes of reducing register pressure, since we touch
+    // threadIdx.x and blockIdx.x at the beginning of the kernel
+    // *anyway*.
+    if (hlo->IsMultiOutputFusion()) {
+      KernelSupportLibrary{&b_}.If("emit_mof_tuple", IsBlock0Thread0(&b_), [&] {
+        llvm_ir::EmitTuple(GetIrArray(*hlo, *hlo),
+                           ConstructIrArrayForOutputs(*hlo), &b_);
+      });
+    }
+  };
+  BlockEpilogueGenerator epilogue_generator = [](HloInstruction*,
+                                                 KernelCodegenInfo*) {};
+  EmitKernel(hlo, kernel_thunk, &kernel_info, tile_generator, hlo021_prologue,
+             epilogue_generator);
 }
 
 namespace {
@@ -3064,7 +3062,7 @@ bool IsUnrollingColumnReductionBeneficial(const HloInstruction* unnested_hlo,
 
 }  // namespace
 
-std::tuple<KernelMappingScheme, bool>
+std::pair<KernelMappingScheme, bool>
 IrEmitterUnnested::ComputeMappingSchemeAndReductionKind(
     const HloInstruction* unnested_hlo, const HloInstruction* first_reduce) {
   const Shape& input_shape = first_reduce->operand(0)->shape();
@@ -3123,12 +3121,10 @@ IrEmitterUnnested::ComputeMappingSchemeAndReductionKind(
     tile_size_y = kNumElementsPerPartialSum;
   }
 
-  DimensionVector req_block_sizes{block_size_z, 1, 1};
   llvm_ir::KernelMappingScheme mapping_scheme(
-      dims_in_elem, tile_size_y, tile_size_x, req_block_sizes, num_threads_y,
-      num_threads_x, &b_);
-  mapping_scheme.SetDilatedX(dilated_x);
-  return std::make_tuple(mapping_scheme, is_row_reduction);
+      dims_in_elem, tile_size_y, tile_size_x, block_size_z, num_threads_y,
+      num_threads_x, dilated_x, &b_);
+  return std::make_pair(mapping_scheme, is_row_reduction);
 }
 
 Status IrEmitterUnnested::EmitReductionFromOrToContiguousDimensions(
@@ -3199,11 +3195,11 @@ Status IrEmitterUnnested::EmitReductionFromOrToContiguousDimensions(
                                      "doesn't set the input layout of "
                                   << first_reduce->ToString();
 
-  bool is_row_reduction;
-  llvm_ir::KernelMappingScheme mapping_scheme;
-  std::tie(mapping_scheme, is_row_reduction) =
+  auto mapping_scheme_pair =
       ComputeMappingSchemeAndReductionKind(unnested_hlo, first_reduce);
-  ReductionCodegenInfo reduction_info(&mapping_scheme, is_row_reduction);
+  bool is_row_reduction = mapping_scheme_pair.second;
+  ReductionCodegenInfo reduction_info(&mapping_scheme_pair.first,
+                                      is_row_reduction);
   EmitElementFunction emit_reduction_tile =
       [&](const llvm_ir::IrArray::Index& index, llvm::Value* y_loc,
           llvm::Value* x_loc, int64 x_iter_num) {
@@ -3218,9 +3214,9 @@ Status IrEmitterUnnested::EmitReductionFromOrToContiguousDimensions(
       [&](llvm::Value* y, llvm::Value* x, const IrArray::Index& index,
           const string& loop_name, llvm::Value* tile_height,
           llvm::Value* tile_width, KernelSupportLibrary* ksl) {
-        EmitTiledElementalCodeWithBoundsCheck(&mapping_scheme, index, loop_name,
-                                              ksl, &b_, y, x, tile_height,
-                                              tile_width, emit_reduction_tile);
+        EmitTiledElementalCodeWithBoundsCheck(
+            &mapping_scheme_pair.first, index, loop_name, ksl, &b_, y, x,
+            tile_height, tile_width, emit_reduction_tile);
       },
       /*block_prologue_generator=*/
       [&](HloInstruction* hlo, KernelCodegenInfo* kernel_info) {
