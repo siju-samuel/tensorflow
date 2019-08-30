@@ -97,13 +97,13 @@ void PortableVectorBatchVectorCwiseProductAccumulate(const float* vector,
                                                      float* result);
 
 void PortableMatrixBatchVectorMultiplyAccumulate(
-    const int8_t* input, const int32_t* input_zeropoint_times_weights,
+    const int8_t* input, const int32_t* bias,
     const int8_t* input_to_gate_weights, int32_t multiplier, int32_t shift,
     int32_t n_batch, int32_t n_input, int32_t n_output, int32_t output_zp,
     int32_t* scratch, int16_t* output);
 
 void PortableMatrixBatchVectorMultiplyAccumulate(
-    const int8_t* input, const int32_t* input_zeropoint_times_weights,
+    const int8_t* input, const int32_t* bias,
     const int8_t* input_to_gate_weights, int32_t multiplier, int32_t shift,
     int32_t n_batch, int32_t n_input, int32_t n_output, int32_t output_zp,
     int32_t* scratch, int8_t* output);
@@ -161,6 +161,8 @@ void PortableApplyActivationToVector(const float* vector, int v_size,
 
 // Compute "1.0f - elements of vector" (used in CIFG).
 void PortableSub1Vector(const float* vector, int v_size, float* result);
+
+void PortableSub1Vector(const int16_t* vector, int v_size, int16_t* result);
 
 // Multiply all elements of vector with a scalar.
 void PortableVectorScalarMultiply(const int8_t* vector, int v_size, float scale,
