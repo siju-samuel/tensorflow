@@ -395,6 +395,24 @@ tf_python_pybind_extension(
     ],
 )
 
+tf_python_pybind_extension(
+    name = "_pywrap_stat_summarizer",
+    srcs = ["util/stat_summarizer_wrapper.cc"],
+    copts = [
+        "-fexceptions",
+        "-fno-strict-aliasing",
+    ],
+    features = ["-use_header_modules"],
+    module_name = "_pywrap_stat_summarizer",
+    deps = [
+        "//tensorflow/core:framework",
+        "//tensorflow/core:protos_all_cc",
+        "//third_party/python_runtime:headers",
+        "@com_google_absl//absl/memory",
+        "@pybind11",
+    ],
+)
+
 cc_library(
     name = "cpp_python_util",
     srcs = ["util/util.cc"],
@@ -703,6 +721,7 @@ py_library(
     ],
     srcs_version = "PY2AND3",
     deps = [
+        ":_pywrap_stat_summarizer",
         ":_pywrap_utils",
         ":common_shapes",
         ":composite_tensor",
@@ -4211,8 +4230,7 @@ cuda_py_test(
     ],
     data = ["//tensorflow/core:image_testdata"],
     shard_count = 5,
-    # b/140155351: Unsupported pad_to_max_output_size=false
-    xla_enable_strict_auto_jit = False,
+    xla_enable_strict_auto_jit = True,
 )
 
 cuda_py_test(
@@ -4280,8 +4298,7 @@ cuda_py_test(
         "//third_party/py/numpy",
     ],
     tags = ["no_windows_gpu"],
-    # b/140156271: testComplexSquaredDifference fails
-    xla_enable_strict_auto_jit = False,
+    xla_enable_strict_auto_jit = True,
 )
 
 cuda_py_test(
@@ -5003,7 +5020,6 @@ tf_py_wrap_cc(
         "util/port.i",
         "util/py_checkpoint_reader.i",
         "util/scoped_annotation.i",
-        "util/stat_summarizer.i",
         "util/tfprof.i",
         "util/traceme.i",
         "util/transform_graph.i",
@@ -5098,8 +5114,9 @@ genrule(
     name = "pybind_symbol_target_libs_file",
     srcs = [
         ":cpp_python_util",  # util
+        "//tensorflow/stream_executor:stream_executor_pimpl",  # stat_summarizer
     ],
-    outs = ["pybind_symbol_target_libs_file"],
+    outs = ["pybind_symbol_target_libs_file.txt"],
     cmd = select({
         "//tensorflow:windows": """
             for SRC in $(SRCS); do
@@ -5709,8 +5726,7 @@ cuda_py_tests(
         "@six_archive//:six",
         "//tensorflow/core:protos_all_py",
     ],
-    # b/140156761: Error just outside tolerance
-    xla_enable_strict_auto_jit = False,
+    xla_enable_strict_auto_jit = True,
 )
 
 py_library(
