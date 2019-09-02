@@ -757,7 +757,6 @@ cuda_py_test(
         "//tensorflow/python:client_testlib",
         "//tensorflow/python:linalg_ops",
     ],
-    xla_enable_strict_auto_jit = True,
 )
 
 cuda_py_test(
@@ -1592,7 +1591,6 @@ cuda_py_test(
         "noasan",  # times out
         "optonly",  # times out
     ],
-    xla_enable_strict_auto_jit = True,
 )
 
 cuda_py_test(
@@ -2186,7 +2184,6 @@ cuda_py_test(
         "//tensorflow/python:framework_for_generated_wrappers",
     ],
     tags = ["no_windows_gpu"],
-    xla_enable_strict_auto_jit = True,
 )
 
 cuda_py_test(
@@ -2670,7 +2667,6 @@ cuda_py_test(
         "//tensorflow/python:random_ops",
         "//tensorflow/python:variables",
     ],
-    xla_enable_strict_auto_jit = True,
 )
 
 cuda_py_test(
