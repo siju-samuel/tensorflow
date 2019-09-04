@@ -3359,8 +3359,9 @@ tf_kernel_library(
     deps = [
         "//tensorflow/core:framework",
         "//tensorflow/core:lib",
+        "//tensorflow/core/kernels:cuda_solvers",
         "//tensorflow/stream_executor/cuda:cusparse_lib",
-    ],
+    ] + if_cuda(["@cub_archive//:cub"]),
 )
 
 LINALG_DEPS = [
@@ -6323,6 +6324,10 @@ filegroup(
         "encode_wav_op.cc",
         "eigen_contraction_kernel.cc",
         "eigen_contraction_kernel.h",
+        "einsum_op_impl_half.cc",
+        "einsum_op_impl_bfloat16.cc",
+        "einsum_op_impl_int32.cc",
+        "einsum_op_impl_int64.cc",
         "einsum_op_impl_float.cc",
         "einsum_op_impl_double.cc",
         "einsum_op_impl_complex64.cc",

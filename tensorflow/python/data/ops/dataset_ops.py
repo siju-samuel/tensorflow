@@ -427,6 +427,29 @@ class DatasetV2(tracking_base.Trackable, composite_tensor.CompositeTensor):
   def from_tensor_slices(tensors):
     """Creates a `Dataset` whose elements are slices of the given tensors.
 
+    The given tensors are sliced along their first dimension. This operation
+    preserves the structure of the input tensors, removing the first dimension
+    of each tensor and using it as the dataset dimension. All input tensors
+    must have the same size in their first dimensions.
+
+    ```python
+    # Slicing a 1D tensor produces scalar tensor elements.
+    Dataset.from_tensor_slices([1, 2, 3])  # ==> [ 1, 2, 3 ]
+
+    # Slicing a 2D tensor produces 1D tensor elements.
+    Dataset.from_tensor_slices([[1, 2], [3, 4], [5, 6]])
+    # ==> [ [1, 2], [3, 4], [5, 6] ]
+
+    # Slicing a tuple of 1D tensors produces tuple elements containing scalar
+    tensors.
+    Dataset.from_tensor_slices(([1, 2], [3, 4], [5, 6]))
+    # ==> [ (1, 3, 5), (2, 4, 6) ]
+
+    # Dictionary structure is also preserved.
+    Dataset.from_tensor_slices({"a": [1, 2], "b": [3, 4], "c": [5, 6]})
+    # ==> [ {"a": 1, "b": 3, "c": 5}, {"a": 2, "b": 4, "c:" 6} ]
+    ```
+
     Note that if `tensors` contains a NumPy array, and eager execution is not
     enabled, the values will be embedded in the graph as one or more
     `tf.constant` operations. For large datasets (> 1 GB), this can waste
@@ -437,7 +460,7 @@ class DatasetV2(tracking_base.Trackable, composite_tensor.CompositeTensor):
 
     Args:
       tensors: A dataset element, with each component having the same size in
-        the 0th dimension.
+        the first dimension.
 
     Returns:
       Dataset: A `Dataset`.
@@ -914,6 +937,39 @@ class DatasetV2(tracking_base.Trackable, composite_tensor.CompositeTensor):
     only the first 1,000 elements in the buffer. Once an element is selected,
     its space in the buffer is replaced by the next (i.e. 1,001-st) element,
     maintaining the 1,000 element buffer.
+
+    `reshuffle_each_iteration` controls whether the shuffle order should be
+    different for each epoch. In TF 1.X, the idiomatic way to create epochs
+    was through the `repeat` transformation:
+
+    ```python
+    d = tf.data.Dataset.range(3)
+    d = d.shuffle(3, reshuffle_each_iteration=True)
+    d = d.repeat(2)  # ==> [ 1, 0, 2, 1, 2, 0 ]
+
+    d = tf.data.Dataset.range(3)
+    d = d.shuffle(3, reshuffle_each_iteration=False)
+    d = d.repeat(2)  # ==> [ 1, 0, 2, 1, 0, 2 ]
+    ```
+
+    In TF 2.0, tf.data.Dataset objects are Python iterables which makes it
+    possible to also create epochs through Python iteration:
+
+    ```python
+    d = tf.data.Dataset.range(3)
+    d = d.shuffle(3, reshuffle_each_iteration=True)
+    for elem in d:
+      # ==> [ 1, 0, 2 ]
+    for elem in d:
+      # ==> [ 1, 2, 0 ]
+
+    d = tf.data.Dataset.range(3)
+    d = d.shuffle(3, reshuffle_each_iteration=False)
+    for elem in d:
+      # ==> [ 1, 0, 2 ]
+    for elem in d:
+      # ==> [ 1, 0, 2 ]
+    ```
 
     Args:
       buffer_size: A `tf.int64` scalar `tf.Tensor`, representing the number of

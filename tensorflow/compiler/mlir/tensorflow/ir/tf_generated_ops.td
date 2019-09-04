@@ -2263,6 +2263,33 @@ pad(t, paddings) ==> [[0, 0, 0, 0, 0, 0]
   TF_DerivedOperandTypeAttr Tpaddings = TF_DerivedOperandTypeAttr<1>;
 }
 
+def TF_PowOp : TF_Op<"Pow", [Broadcastable, NoSideEffect]>,
+               WithBroadcastableBinOpBuilder {
+  let summary = "Computes the power of one value to another.";
+
+  let description = [{
+Given a tensor `x` and a tensor `y`, this operation computes \\(x^y\\) for
+corresponding elements in `x` and `y`. For example:
+
+```
+# tensor 'x' is [[2, 2]], [3, 3]]
+# tensor 'y' is [[8, 16], [2, 3]]
+tf.pow(x, y) ==> [[256, 65536], [9, 27]]
+```
+  }];
+
+  let arguments = (ins
+    TensorOf<[BF16, F16, F32, F64, I32, I64, TF_Complex128, TF_Complex64]>:$x,
+    TensorOf<[BF16, F16, F32, F64, I32, I64, TF_Complex128, TF_Complex64]>:$y
+  );
+
+  let results = (outs
+    TensorOf<[BF16, F16, F32, F64, I32, I64, TF_Complex128, TF_Complex64]>:$z
+  );
+
+  TF_DerivedOperandTypeAttr T = TF_DerivedOperandTypeAttr<0>;
+}
+
 def TF_ProdOp : TF_Op<"Prod", [NoSideEffect]> {
   let summary = [{
 Computes the product of elements across dimensions of a tensor.
@@ -3652,31 +3679,6 @@ retained with length 1.
 
   TF_DerivedOperandTypeAttr T = TF_DerivedOperandTypeAttr<0>;
   TF_DerivedOperandTypeAttr Tidx = TF_DerivedOperandTypeAttr<1>;
-}
-
-def TF_TPUReplicateMetadataOp : TF_Op<"TPUReplicateMetadata", [NoSideEffect]> {
-  let summary = [{
-Metadata indicating how the TPU computation should be replicated.
-  }];
-
-  let description = [{
-This operation holds the metadata common to operations of a `tpu.replicate()` computation subgraph.
-  }];
-
-  let arguments = (ins
-    Confined<I64Attr, [IntMinValue<0>]>:$num_replicas,
-    DefaultValuedAttr<I64Attr, "1">:$num_cores_per_replica,
-    StrAttr:$topology,
-    DefaultValuedAttr<BoolAttr, "true">:$use_tpu,
-    DefaultValuedAttr<I64ArrayAttr, "{}">:$device_assignment,
-    DefaultValuedAttr<I64ArrayAttr, "{}">:$computation_shape,
-    DefaultValuedAttr<StrArrayAttr, "{}">:$host_compute_core,
-    DefaultValuedAttr<StrArrayAttr, "{}">:$padding_map,
-    DefaultValuedAttr<StrAttr, "STEP_MARK_AT_ENTRY">:$step_marker_location,
-    DefaultValuedAttr<BoolAttr, "false">:$allow_soft_placement
-  );
-
-  let results = (outs);
 }
 
 def TF_TanhOp : TF_Op<"Tanh", [NoSideEffect, SameOperandsAndResultType]> {

@@ -370,6 +370,27 @@ cc_library(
 )
 
 filegroup(
+    name = "util_port_hdrs",
+    srcs = [
+        "util/port.h",
+    ],
+    visibility = [
+        "//tensorflow/core:__pkg__",
+        "//tensorflow/python:__pkg__",
+    ],
+)
+
+cc_library(
+    name = "util_port",
+    srcs = ["util/port.cc"],
+    hdrs = ["util/port.h"],
+    visibility = [
+        "//tensorflow/core:__pkg__",
+        "//tensorflow/python:__pkg__",
+    ],
+)
+
+filegroup(
     name = "platform_port_hdrs",
     srcs = [
         "//tensorflow/core/platform:cpu_info.h",
@@ -1170,6 +1191,7 @@ tf_gen_op_libs(
         "set_ops",
         "script_ops",
         "sendrecv_ops",
+        "sparse_csr_matrix_ops",
         "sparse_ops",
         "spectral_ops",
         "state_ops",
@@ -1395,6 +1417,7 @@ cc_library(
         ":sdca_ops_op_lib",
         ":sendrecv_ops_op_lib",
         ":set_ops_op_lib",
+        ":sparse_csr_matrix_ops_op_lib",
         ":sparse_ops_op_lib",
         ":summary_ops_op_lib",
         ":spectral_ops_op_lib",
@@ -1584,6 +1607,7 @@ cc_library(
         "//tensorflow/core/kernels:summary_kernels",
         "//tensorflow/core/kernels:training_ops",
         "//tensorflow/core/kernels:word2vec_kernels",
+        "//tensorflow/core/kernels/sparse:kernels",
     ] + tf_additional_cloud_kernel_deps() + if_not_windows([
         "//tensorflow/core/kernels:fact_op",
         "//tensorflow/core/kernels:array_not_windows",
@@ -2746,6 +2770,7 @@ FRAMEWORK_INTERNAL_PRIVATE_HEADERS = [
         "example/example_parser_configuration.*",
         "util/reporter.h",
         "util/reporter.cc",
+        "util/port.h",
         "framework/fake_input.*",
         "framework/op_gen_lib.*",
         "framework/reader_base.*",
@@ -2858,6 +2883,7 @@ tf_cuda_library(
             "util/stats_calculator.*",
             "util/version_info.cc",
             "util/env_var.cc",
+            "util/port.cc",
         ],
     ) + select({
         "//tensorflow:windows": [],
@@ -2886,6 +2912,7 @@ tf_cuda_library(
         ":protos_all_cc",
         ":stats_calculator_portable",
         ":version_lib",
+        ":util_port",
         "@com_google_absl//absl/base",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
@@ -3735,6 +3762,7 @@ tf_cc_tests(
         "//tensorflow/core/platform:profile_utils/cpu_utils_test.cc",
         "//tensorflow/core/platform:scanner_test.cc",
         "//tensorflow/core/platform:stacktrace_handler_test.cc",
+        "//tensorflow/core/platform:stacktrace_test.cc",
         "//tensorflow/core/platform:str_util_test.cc",
         "//tensorflow/core/platform:strcat_test.cc",
         "//tensorflow/core/platform:stringpiece_test.cc",
@@ -5178,6 +5206,7 @@ tf_cc_tests(
         "ops/rnn_ops_test.cc",
         "ops/set_ops_test.cc",
         "ops/shape_function_test.cc",
+        "ops/sparse_csr_matrix_ops_test.cc",
         "ops/sparse_ops_test.cc",
         "ops/spectral_ops_test.cc",
         "ops/state_ops_test.cc",
