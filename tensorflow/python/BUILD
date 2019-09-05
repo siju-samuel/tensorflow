@@ -49,8 +49,6 @@ py_library(
     visibility = [
         "//tensorflow:__pkg__",
         "//tensorflow/compiler/aot/tests:__pkg__",  # TODO(b/34059704): remove when fixed
-        "//tensorflow/contrib/learn:__pkg__",  # TODO(b/34059704): remove when fixed
-        "//tensorflow/contrib/learn/python/learn/datasets:__pkg__",  # TODO(b/34059704): remove when fixed
         "//tensorflow/lite/toco/python:__pkg__",  # TODO(b/34059704): remove when fixed
         "//tensorflow/python/debug:__pkg__",  # TODO(b/34059704): remove when fixed
         "//tensorflow/python/tools:__pkg__",  # TODO(b/34059704): remove when fixed
@@ -100,7 +98,6 @@ py_library(
         "//third_party/py/tensorflow_core:__subpackages__",
     ],
     deps = [
-        ":_pywrap_util_port",
         ":_pywrap_utils",
         ":array_ops",
         ":audio_ops_gen",
@@ -215,8 +212,8 @@ py_library(
     srcs_version = "PY2AND3",
     visibility = ["//visibility:public"],
     deps = [
-        ":_pywrap_util_port",
         ":lib",
+        ":pywrap_tensorflow",
         ":util",
         "//tensorflow/core:protos_all_py",
         "@absl_py//absl:app",
@@ -385,11 +382,6 @@ tf_python_pybind_extension(
     name = "_pywrap_utils",
     srcs = ["util/util_wrapper.cc"],
     hdrs = ["util/util.h"],
-    copts = [
-        "-fexceptions",
-        "-fno-strict-aliasing",
-    ],
-    features = ["-use_header_modules"],
     module_name = "_pywrap_utils",
     deps = [
         "//third_party/python_runtime:headers",
@@ -400,34 +392,12 @@ tf_python_pybind_extension(
 tf_python_pybind_extension(
     name = "_pywrap_stat_summarizer",
     srcs = ["util/stat_summarizer_wrapper.cc"],
-    copts = [
-        "-fexceptions",
-        "-fno-strict-aliasing",
-    ],
-    features = ["-use_header_modules"],
     module_name = "_pywrap_stat_summarizer",
     deps = [
         "//tensorflow/core:framework",
         "//tensorflow/core:protos_all_cc",
         "//third_party/python_runtime:headers",
         "@com_google_absl//absl/memory",
-        "@pybind11",
-    ],
-)
-
-pybind_extension(
-    name = "_pywrap_util_port",
-    srcs = ["util/port_wrapper.cc"],
-    hdrs = ["//tensorflow/core:util_port_hdrs"],
-    copts = [
-        "-fexceptions",
-        "-fno-strict-aliasing",
-    ],
-    features = ["-use_header_modules"],
-    module_name = "_pywrap_util_port",
-    deps = [
-        "//tensorflow/core:util_port",
-        "//third_party/python_runtime:headers",
         "@pybind11",
     ],
 )
@@ -742,7 +712,6 @@ py_library(
     srcs_version = "PY2AND3",
     deps = [
         ":_pywrap_stat_summarizer",
-        ":_pywrap_util_port",
         ":_pywrap_utils",
         ":common_shapes",
         ":composite_tensor",
@@ -4663,8 +4632,6 @@ py_library(
 pybind_extension(
     name = "_tf_stack",
     srcs = ["util/tf_stack.cc"],
-    copts = ["-fexceptions"],
-    features = ["-use_header_modules"],
     # TODO(b/138203821): change to "util._tf_stack" once the bug is fixed.
     module_name = "_tf_stack",
     deps = [
@@ -5040,6 +5007,7 @@ tf_py_wrap_cc(
         "pywrap_tfe.i",
         "training/quantize_training.i",
         "util/kernel_registry.i",
+        "util/port.i",
         "util/py_checkpoint_reader.i",
         "util/scoped_annotation.i",
         "util/tfprof.i",

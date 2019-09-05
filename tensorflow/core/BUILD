@@ -106,8 +106,6 @@ load("//tensorflow:tensorflow.bzl", "tf_version_info_genrule")
 load(
     "//tensorflow/core/platform:default/build_config.bzl",
     "tf_additional_all_protos",
-    "tf_additional_cloud_kernel_deps",
-    "tf_additional_cloud_op_deps",
     "tf_additional_core_deps",
     "tf_additional_device_tracer_cuda_deps",
     "tf_additional_device_tracer_test_flags",
@@ -366,27 +364,6 @@ cc_library(
     deps = [
         ":platform_base",
         "//third_party/eigen3",
-    ],
-)
-
-filegroup(
-    name = "util_port_hdrs",
-    srcs = [
-        "util/port.h",
-    ],
-    visibility = [
-        "//tensorflow/core:__pkg__",
-        "//tensorflow/python:__pkg__",
-    ],
-)
-
-cc_library(
-    name = "util_port",
-    srcs = ["util/port.cc"],
-    hdrs = ["util/port.h"],
-    visibility = [
-        "//tensorflow/core:__pkg__",
-        "//tensorflow/python:__pkg__",
     ],
 )
 
@@ -1445,7 +1422,7 @@ cc_library(
     ]) + if_tensorrt([
         "//tensorflow/compiler/tf2tensorrt:trt_engine_resource_ops_op_lib",
         "//tensorflow/compiler/tf2tensorrt:trt_op_libs",
-    ]) + tf_additional_cloud_op_deps(),
+    ]),
     alwayslink = 1,
 )
 
@@ -1609,7 +1586,7 @@ cc_library(
         "//tensorflow/core/kernels:training_ops",
         "//tensorflow/core/kernels:word2vec_kernels",
         "//tensorflow/core/kernels/sparse:kernels",
-    ] + tf_additional_cloud_kernel_deps() + if_not_windows([
+    ] + if_not_windows([
         "//tensorflow/core/kernels:fact_op",
         "//tensorflow/core/kernels:array_not_windows",
         "//tensorflow/core/kernels:math_not_windows",
@@ -2772,7 +2749,6 @@ FRAMEWORK_INTERNAL_PRIVATE_HEADERS = [
         "example/example_parser_configuration.*",
         "util/reporter.h",
         "util/reporter.cc",
-        "util/port.h",
         "framework/fake_input.*",
         "framework/op_gen_lib.*",
         "framework/reader_base.*",
@@ -2885,7 +2861,6 @@ tf_cuda_library(
             "util/stats_calculator.*",
             "util/version_info.cc",
             "util/env_var.cc",
-            "util/port.cc",
         ],
     ) + select({
         "//tensorflow:windows": [],
@@ -2914,7 +2889,6 @@ tf_cuda_library(
         ":protos_all_cc",
         ":stats_calculator_portable",
         ":version_lib",
-        ":util_port",
         "@com_google_absl//absl/base",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
@@ -3788,6 +3762,7 @@ tf_cc_tests(
         "//third_party/eigen3",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/types:optional",
         "@zlib_archive//:zlib",
     ],
 )
