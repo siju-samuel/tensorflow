@@ -87,9 +87,9 @@ void ApplyLayerNorm(const int16_t* input, const int16_t* layer_norm_weights,
                     const int32_t* bias, int32_t layer_norm_scale_a,
                     int32_t layer_norm_scale_b, int32_t variance_limit,
                     int n_batch, int n_input, int16_t* output) {
-  PortableApplyLayerNorm(input, layer_norm_weights, bias, layer_norm_scale_a,
-                         layer_norm_scale_b, variance_limit, n_batch, n_input,
-                         output);
+  NEON_OR_PORTABLE(ApplyLayerNorm, input, layer_norm_weights, bias,
+                   layer_norm_scale_a, layer_norm_scale_b, variance_limit,
+                   n_batch, n_input, output);
 }
 
 void ApplySigmoid(const int16_t* input, int32_t n_batch, int32_t n_input,
@@ -194,7 +194,7 @@ void Sub1Vector(const float* vector, int v_size, float* result) {
 }
 
 void Sub1Vector(const int16_t* vector, int v_size, int16_t* result) {
-  PortableSub1Vector(vector, v_size, result);
+  NEON_OR_PORTABLE(Sub1Vector, vector, v_size, result);
 }
 
 float Clip(float f, float abs_limit) { return PortableClip(f, abs_limit); }
