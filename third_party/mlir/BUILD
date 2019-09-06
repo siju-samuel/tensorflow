@@ -275,6 +275,7 @@ cc_library(
 cc_library(
     name = "AffineOps",
     srcs = [
+        "include/mlir/Transforms/InliningUtils.h",
         "lib/Dialect/AffineOps/AffineOps.cpp",
     ],
     hdrs = [
@@ -358,6 +359,7 @@ cc_library(
     ],
     hdrs = [
         "include/mlir/Dialect/StandardOps/Ops.h",
+        "include/mlir/Transforms/InliningUtils.h",
     ],
     deps = [
         ":IR",
@@ -934,6 +936,7 @@ cc_library(
     srcs = [
         "lib/Transforms/Utils/FoldUtils.cpp",
         "lib/Transforms/Utils/GreedyPatternRewriteDriver.cpp",
+        "lib/Transforms/Utils/InliningUtils.cpp",
         "lib/Transforms/Utils/LoopFusionUtils.cpp",
         "lib/Transforms/Utils/LoopUtils.cpp",
         "lib/Transforms/Utils/RegionUtils.cpp",
@@ -941,6 +944,7 @@ cc_library(
     ],
     hdrs = [
         "include/mlir/Transforms/FoldUtils.h",
+        "include/mlir/Transforms/InliningUtils.h",
         "include/mlir/Transforms/LoopFusionUtils.h",
         "include/mlir/Transforms/LoopUtils.h",
         "include/mlir/Transforms/RegionUtils.h",
@@ -967,6 +971,7 @@ cc_library(
         "lib/Transforms/CSE.cpp",
         "lib/Transforms/Canonicalizer.cpp",
         "lib/Transforms/DialectConversion.cpp",
+        "lib/Transforms/Inliner.cpp",
         "lib/Transforms/LoopCoalescing.cpp",
         "lib/Transforms/LoopFusion.cpp",
         "lib/Transforms/LoopInvariantCodeMotion.cpp",

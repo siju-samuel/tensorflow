@@ -16,11 +16,13 @@ TF_PLATFORM_LIBRARIES = {
             "//tensorflow/core/platform",
         ],
         "visibility": ["//visibility:private"],
+        "tags": ["no_oss"],
     },
     "cord": {
         "name": "cord_impl",
         "hdrs": ["//tensorflow/core/platform:default/cord.h"],
         "visibility": ["//visibility:private"],
+        "tags": ["no_oss"],
     },
     "env_time": {
         "name": "env_time_impl",
@@ -34,6 +36,7 @@ TF_PLATFORM_LIBRARIES = {
             "//tensorflow/core/platform:types",
         ],
         "visibility": ["//visibility:private"],
+        "tags": ["no_oss"],
     },
 }
 
@@ -50,6 +53,7 @@ TF_WINDOWS_PLATFORM_LIBRARIES = {
             "//tensorflow/core/platform:types",
         ],
         "visibility": ["//visibility:private"],
+        "tags": ["no_oss"],
     },
 }
 

@@ -11486,13 +11486,6 @@ op {
       }
     }
   }
-  attr {
-    name: "axis"
-    type: "int"
-    default_value {
-      i: -1
-    }
-  }
 }
 op {
   name: "DeserializeIterator"
@@ -12763,6 +12756,13 @@ op {
         type: DT_BOOL
         type: DT_COMPLEX128
       }
+    }
+  }
+  attr {
+    name: "incompatible_shape_error"
+    type: "bool"
+    default_value {
+      b: true
     }
   }
   is_commutative: true
@@ -24100,6 +24100,13 @@ op {
       }
     }
   }
+  attr {
+    name: "incompatible_shape_error"
+    type: "bool"
+    default_value {
+      b: true
+    }
+  }
   is_commutative: true
 }
 op {
@@ -27033,20 +27040,6 @@ op {
         s: "HALF_AWAY_FROM_ZERO"
         s: "HALF_TO_EVEN"
       }
-    }
-  }
-  attr {
-    name: "narrow_range"
-    type: "bool"
-    default_value {
-      b: false
-    }
-  }
-  attr {
-    name: "axis"
-    type: "int"
-    default_value {
-      i: -1
     }
   }
 }

@@ -72,6 +72,13 @@ package_group(
     ],
 )
 
+package_group(
+    name = "optimizer_helper_friends",
+    packages = [
+        "//learning/brain/research/lather/...",
+    ],
+)
+
 config_setting(
     # Add "--define tensorflow_xsmm=1" to your build command to use libxsmm for
     # sparse matrix multiplications. You will also need appropriate -mavx*
@@ -704,7 +711,10 @@ cc_library(
     name = "training_op_helpers",
     srcs = ["training_op_helpers.cc"],
     hdrs = ["training_op_helpers.h"],
-    visibility = [":friends"],
+    visibility = [
+        ":friends",
+        ":optimizer_helper_friends",
+    ],
     deps = [
         ":dense_update_functor",
         ":variable_ops",
@@ -6781,7 +6791,6 @@ tf_cc_binary(
             "-lm",
             "-llog",
             "-pie",
-            "-std=c++11",
         ],
         "//conditions:default": [],
     }),
@@ -6841,7 +6850,6 @@ cc_binary(
             "-lm",
             "-llog",
             "-pie",
-            "-std=c++11",
         ],
         "//conditions:default": [],
     }),
@@ -6927,7 +6935,6 @@ cc_binary(
             "-lm",
             "-llog",
             "-pie",
-            "-std=c++11",
         ],
         "//conditions:default": [],
     }),
