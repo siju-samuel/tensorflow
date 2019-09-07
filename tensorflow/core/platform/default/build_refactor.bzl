@@ -16,13 +16,13 @@ TF_PLATFORM_LIBRARIES = {
             "//tensorflow/core/platform",
         ],
         "visibility": ["//visibility:private"],
-        "tags": ["no_oss"],
+        "tags": ["no_oss", "manual"],
     },
     "cord": {
         "name": "cord_impl",
         "hdrs": ["//tensorflow/core/platform:default/cord.h"],
         "visibility": ["//visibility:private"],
-        "tags": ["no_oss"],
+        "tags": ["no_oss", "manual"],
     },
     "env_time": {
         "name": "env_time_impl",
@@ -36,7 +36,15 @@ TF_PLATFORM_LIBRARIES = {
             "//tensorflow/core/platform:types",
         ],
         "visibility": ["//visibility:private"],
-        "tags": ["no_oss"],
+        "tags": ["no_oss", "manual"],
+    },
+    "dynamic_annotations": {
+        "name": "dynamic_annotations_impl",
+        "hdrs": [
+            "//tensorflow/core/platform:default/dynamic_annotations.h",
+        ],
+        "visibility": ["//visibility:private"],
+        "tags": ["no_oss", "manual"],
     },
 }
 
@@ -53,7 +61,7 @@ TF_WINDOWS_PLATFORM_LIBRARIES = {
             "//tensorflow/core/platform:types",
         ],
         "visibility": ["//visibility:private"],
-        "tags": ["no_oss"],
+        "tags": ["no_oss", "manual"],
     },
 }
 

@@ -266,6 +266,7 @@ cc_library(
         ":type_to_shape",
         "//tensorflow/compiler/mlir/tensorflow:error_util",
         "//tensorflow/compiler/xla:comparison_util",
+        "//tensorflow/compiler/xla:literal_util",
         "//tensorflow/compiler/xla:status_macros",
         "//tensorflow/compiler/xla:xla_data_proto",
         "//tensorflow/compiler/xla/client:xla_builder",
@@ -346,6 +347,7 @@ tf_native_cc_binary(
     deps = [
         "@llvm//:support",
         "@llvm//:tablegen",
+        "@local_config_mlir//:Support",
         "@local_config_mlir//:TableGen",
     ],
 )
