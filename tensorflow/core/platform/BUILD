@@ -53,6 +53,7 @@ tf_instantiate_platform_libraries(names = [
     "cord",
     "dynamic_annotations",
     "env_time",
+    "fingerprint",
 ])
 
 cc_library(
@@ -164,6 +165,27 @@ cc_library(
     name = "file_statistics",
     hdrs = ["file_statistics.h"],
     deps = [":types"],
+)
+
+cc_library(
+    name = "fingerprint",
+    hdrs = ["fingerprint.h"],
+    deps = [
+        ":fingerprint_impl",
+        ":platform",
+        ":stringpiece",
+        ":types",
+    ],
+)
+
+cc_library(
+    name = "grpc_services",
+    hdrs = ["grpc_services.h"],
+    deps = [
+        ":platform",
+        "//tensorflow/core/profiler:profiler_analysis_proto_cc",
+        "//tensorflow/core/profiler:profiler_service_proto_cc",
+    ],
 )
 
 cc_library(
