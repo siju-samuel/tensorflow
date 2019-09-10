@@ -1,5 +1,5 @@
 load("@local_config_mlir//:tblgen.bzl", "gentbl")
-load("//tensorflow:tensorflow.bzl", "tf_cc_test", "tf_native_cc_binary")
+load("//tensorflow:tensorflow.bzl", "tf_cc_test", "tf_gen_op_wrapper_py", "tf_native_cc_binary")
 
 package(
     default_visibility = [":friends"],
@@ -138,6 +138,7 @@ cc_library(
     includes = ["include"],
     deps = [
         ":error_util",
+        ":mlir_passthrough_op",
         ":tensorflow_canonicalize_inc_gen",
         ":tensorflow_device_ops_inc_gen",
         ":tensorflow_executor_inc_gen",
@@ -172,6 +173,7 @@ cc_library(
         "transforms/generated_canonicalize.inc",
         "transforms/generated_optimize.inc",
         "transforms/graph_pruning.cc",
+        "transforms/materialize_mlir_passthrough_op.cc",
         "transforms/optimize.cc",
         "transforms/raise_control_flow.cc",
         "transforms/tpu_cluster_formation.cc",
@@ -194,6 +196,7 @@ cc_library(
         "@llvm//:support",
         "@local_config_mlir//:Analysis",
         "@local_config_mlir//:IR",
+        "@local_config_mlir//:Parser",
         "@local_config_mlir//:Pass",
         "@local_config_mlir//:StandardOps",
         "@local_config_mlir//:Support",
@@ -707,4 +710,19 @@ tf_cc_test(
         "//tensorflow/core:test_main",
         "//tensorflow/stream_executor/lib",
     ],
+)
+
+cc_library(
+    name = "mlir_passthrough_op",
+    srcs = ["ops/mlir_passthrough_op.cc"],
+    deps = [
+        "//tensorflow/core:framework",
+    ],
+    alwayslink = 1,
+)
+
+tf_gen_op_wrapper_py(
+    name = "gen_mlir_passthrough_op_py",
+    out = "gen_mlir_passthrough_op.py",
+    deps = [":mlir_passthrough_op"],
 )

@@ -54,6 +54,10 @@ tf_instantiate_platform_libraries(names = [
     "dynamic_annotations",
     "env_time",
     "fingerprint",
+    "human_readable_json",
+    "mutex",
+    "notification",
+    "strong_hash",
 ])
 
 cc_library(
@@ -162,6 +166,18 @@ cc_library(
 )
 
 cc_library(
+    name = "error",
+    srcs = ["error.cc"],
+    hdrs = ["error.h"],
+    deps = [
+        ":platform",
+        ":types",
+        "//tensorflow/core/lib/core:status",
+        "//tensorflow/core/lib/strings:string_utils",
+    ],
+)
+
+cc_library(
     name = "file_statistics",
     hdrs = ["file_statistics.h"],
     deps = [":types"],
@@ -195,6 +211,14 @@ cc_library(
 )
 
 cc_library(
+    name = "human_readable_json",
+    textual_hdrs = ["human_readable_json.h"],
+    deps = [
+        ":human_readable_json_impl",
+    ],
+)
+
+cc_library(
     name = "logging",
     srcs = tf_platform_hdrs(["logging.h"]) + tf_platform_srcs(["logging.cc"]),
     hdrs = ["logging.h"],
@@ -210,6 +234,23 @@ cc_library(
 cc_library(
     name = "macros",
     hdrs = ["macros.h"],
+)
+
+cc_library(
+    name = "mutex",
+    textual_hdrs = ["mutex.h"],
+    deps = [
+        ":mutex_impl",
+    ],
+)
+
+cc_library(
+    name = "notification",
+    hdrs = ["notification.h"],
+    deps = [
+        ":notification_impl",
+        ":platform",
+    ],
 )
 
 cc_library(
@@ -274,6 +315,17 @@ cc_library(
     name = "protobuf_compiler",
     hdrs = ["protobuf_compiler.h"],
     deps = tf_protobuf_compiler_deps(),
+)
+
+cc_library(
+    name = "regexp",
+    hdrs = ["regexp.h"],
+    deps = [
+        ":platform",
+        ":types",
+        "@com_google_absl//absl/strings",
+        "@com_googlesource_code_re2//:re2",
+    ],
 )
 
 cc_library(
@@ -361,6 +413,16 @@ cc_library(
     hdrs = ["stringprintf.h"],
     deps = [
         ":macros",
+        ":types",
+    ],
+)
+
+cc_library(
+    name = "strong_hash",
+    hdrs = ["strong_hash.h"],
+    deps = [
+        ":platform",
+        ":strong_hash_impl",
         ":types",
     ],
 )

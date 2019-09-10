@@ -57,6 +57,68 @@ TF_PLATFORM_LIBRARIES = {
         "visibility": ["//visibility:private"],
         "tags": ["no_oss", "manual"],
     },
+    "human_readable_json": {
+        "name": "human_readable_json_impl",
+        "hdrs": [
+            "//tensorflow/core/platform:human_readable_json.h",
+        ],
+        "srcs": [
+            "//tensorflow/core/platform:default/human_readable_json.cc",
+        ],
+        "deps": [
+            "//tensorflow/core/lib/core:errors",
+            "//tensorflow/core/lib/core:status",
+            "//tensorflow/core/lib/strings:string_utils",
+            "//tensorflow/core/platform:protobuf",
+        ],
+        "visibility": ["//visibility:private"],
+        "tags": ["no_oss", "manual"],
+    },
+    "mutex": {
+        "name": "mutex_impl",
+        "hdrs": [
+            "//tensorflow/core/platform:mutex.h",
+        ],
+        "textual_hdrs": [
+            "//tensorflow/core/platform:default/mutex.h",
+        ],
+        "srcs": [
+            "//tensorflow/core/platform:default/mutex.cc",
+            "//tensorflow/core/platform:default/mutex_data.h",
+        ],
+        "deps": [
+            "@nsync//:nsync_cpp",
+            "//tensorflow/core/platform",
+            "//tensorflow/core/platform:macros",
+            "//tensorflow/core/platform:thread_annotations",
+            "//tensorflow/core/platform:types",
+        ],
+        "visibility": ["//visibility:private"],
+        "tags": ["no_oss", "manual"],
+    },
+    "notification": {
+        "name": "notification_impl",
+        "hdrs": [
+            "//tensorflow/core/platform:default/notification.h",
+        ],
+        "deps": [
+            "//tensorflow/core/platform:mutex",
+            "//tensorflow/core/platform:types",
+        ],
+        "visibility": ["//visibility:private"],
+        "tags": ["no_oss", "manual"],
+    },
+    "strong_hash": {
+        "name": "strong_hash_impl",
+        "textual_hdrs": [
+            "//tensorflow/core/platform:default/strong_hash.h",
+        ],
+        "deps": [
+            "@highwayhash//:sip_hash",
+        ],
+        "visibility": ["//visibility:private"],
+        "tags": ["no_oss", "manual"],
+    },
 }
 
 TF_WINDOWS_PLATFORM_LIBRARIES = {

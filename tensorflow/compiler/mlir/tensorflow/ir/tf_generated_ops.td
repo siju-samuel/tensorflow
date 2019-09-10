@@ -544,6 +544,27 @@ def TF_CeilOp : TF_Op<"Ceil", [NoSideEffect, SameOperandsAndResultType]> {
   TF_DerivedOperandTypeAttr T = TF_DerivedOperandTypeAttr<0>;
 }
 
+def TF_CheckNumericsOp : TF_Op<"CheckNumerics", [SameOperandsAndResultType]> {
+  let summary = "Checks a tensor for NaN and Inf values.";
+
+  let description = [{
+When run, reports an `InvalidArgument` error if `tensor` has any values
+that are not a number (NaN) or infinity (Inf). Otherwise, passes `tensor` as-is.
+  }];
+
+  let arguments = (ins
+    TF_FpTensor:$tensor,
+
+    StrAttr:$message
+  );
+
+  let results = (outs
+    TF_FpTensor:$output
+  );
+
+  TF_DerivedOperandTypeAttr T = TF_DerivedOperandTypeAttr<0>;
+}
+
 def TF_ConcatOp : TF_Op<"Concat", [NoSideEffect]> {
   let summary = "Concatenates tensors along one dimension.";
 
@@ -1061,6 +1082,52 @@ Fake-quantize the 'inputs' tensor of type float via global float scalars `min`
 
   let description = [{
 and `max` to 'outputs' tensor of same shape as `inputs`.
+
+`[min; max]` define the clamping range for the `inputs` data.
+`inputs` values are quantized into the quantization range (`[0; 2^num_bits - 1]`
+when `narrow_range` is false and `[1; 2^num_bits - 1]` when it is true) and
+then de-quantized and output as floats in `[min; max]` interval.
+`num_bits` is the bitwidth of the quantization; between 2 and 16, inclusive.
+
+Before quantization, `min` and `max` values are adjusted with the following
+logic.
+It is suggested to have `min <= 0 <= max`. If `0` is not in the range of values,
+the behavior can be unexpected:
+If `0 < min < max`: `min_adj = 0` and `max_adj = max - min`.
+If `min < max < 0`: `min_adj = min - max` and `max_adj = 0`.
+If `min <= 0 <= max`: `scale = (max - min) / (2^num_bits - 1) `,
+`min_adj = scale * round(min / scale)` and `max_adj = max + min_adj - min`.
+
+This operation has a gradient and thus allows for training `min` and `max`
+values.
+  }];
+
+  let arguments = (ins
+    F32Tensor:$inputs,
+    F32Tensor:$min,
+    F32Tensor:$max,
+
+    DefaultValuedAttr<I64Attr, "8">:$num_bits,
+    DefaultValuedAttr<BoolAttr, "false">:$narrow_range
+  );
+
+  let results = (outs
+    F32Tensor:$outputs
+  );
+
+  let verifier = [{
+    return Verify(*this);
+  }];
+}
+
+def TF_FakeQuantWithMinMaxVarsPerChannelOp : TF_Op<"FakeQuantWithMinMaxVarsPerChannel", [NoSideEffect]> {
+  let summary = [{
+Fake-quantize the 'inputs' tensor of type float and one of the shapes: `[d]`,
+  }];
+
+  let description = [{
+`[b, d]` `[b, h, w, d]` via per-channel floats `min` and `max` of shape `[d]`
+to 'outputs' tensor of same shape as `inputs`.
 
 `[min; max]` define the clamping range for the `inputs` data.
 `inputs` values are quantized into the quantization range (`[0; 2^num_bits - 1]`
@@ -2011,6 +2078,57 @@ pad(t, paddings) ==> [[2, 1, 1, 2, 3, 3, 2]
 
   TF_DerivedOperandTypeAttr T = TF_DerivedOperandTypeAttr<0>;
   TF_DerivedOperandTypeAttr Tpaddings = TF_DerivedOperandTypeAttr<1>;
+}
+
+def TF_MlirPassthroughOpOp : TF_Op<"MlirPassthroughOp", [NoSideEffect]> {
+  let summary = [{
+Wraps an arbitrary MLIR computation expressed as a module with a main() function.
+  }];
+
+  let description = [{
+This operation does not have an associated kernel and is not intended to be
+executed in a regular TensorFlow session. Instead it is intended to be used for
+testing or for special case where a user intends to pass custom MLIR computation
+through a TensorFlow graph with the intent of having custom tooling processing
+it downstream (when targeting a different environment, like TensorFlow lite for
+example).
+The MLIR module is expected to have a main() function that will be used as an
+entry point. The inputs to the operations will be passed as argument to the
+main() function and the returned values of the main function mapped to the
+outputs.
+Example usage:
+
+```
+import tensorflow as tf
+from tensorflow.compiler.mlir.tensorflow.gen_mlir_passthrough_op import mlir_passthrough_op
+
+mlir_module = '''
+func @main(%arg0 : tensor<10xf32>, %arg1 : tensor<10xf32>) -> tensor<10x10xf32> {
+   %add = "magic.op"(%arg0, %arg1) : (tensor<10xf32>, tensor<10xf32>) -> tensor<10x10xf32>
+   return %ret : tensor<10x10xf32>
+}
+'''
+
+@tf.function
+def foo(x, y):
+  return = mlir_passthrough_op([x, y], mlir_module, Toutputs=[tf.float32])
+
+graph_def = foo.get_concrete_function(tf.TensorSpec([10], tf.float32), tf.TensorSpec([10], tf.float32)).graph.as_graph_def()
+```
+  }];
+
+  let arguments = (ins
+    Variadic<TF_Tensor>:$inputs,
+
+    StrAttr:$mlir_module
+  );
+
+  let results = (outs
+    Variadic<TF_Tensor>:$outputs
+  );
+
+  TF_DerivedOperandTypeListAttr Tinputs = TF_DerivedOperandTypeListAttr<0>;
+  TF_DerivedResultTypeListAttr Toutputs = TF_DerivedResultTypeListAttr<0>;
 }
 
 def TF_MulOp : TF_Op<"Mul", [Broadcastable, Commutative, NoSideEffect]>,
