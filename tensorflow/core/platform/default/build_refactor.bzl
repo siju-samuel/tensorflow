@@ -7,6 +7,16 @@ Build targets for default implementations of tf/core/platform libraries.
 # and add real BUILD files under tensorflow/core/platform/default and
 # tensorflow/core/platform/windows after the refactoring is complete.
 
+load(
+    "//tensorflow/core/platform:default/build_config.bzl",
+    "tf_additional_numa_copts",
+    "tf_additional_numa_deps",
+)
+load(
+    "//tensorflow:tensorflow.bzl",
+    "tf_copts",
+)
+
 TF_PLATFORM_LIBRARIES = {
     "context": {
         "name": "context_impl",
@@ -33,6 +43,22 @@ TF_PLATFORM_LIBRARIES = {
             "//tensorflow/core/platform:default/env_time.cc",
         ],
         "deps": [
+            "//tensorflow/core/platform:types",
+        ],
+        "visibility": ["//visibility:private"],
+        "tags": ["no_oss", "manual"],
+    },
+    "cuda_libdevice_path": {
+        "name": "cuda_libdevice_path_impl",
+        "hdrs": [
+            "//tensorflow/core/platform:cuda_libdevice_path.h",
+        ],
+        "srcs": [
+            "//tensorflow/core/platform:default/cuda_libdevice_path.cc",
+        ],
+        "deps": [
+            "@local_config_cuda//cuda:cuda_headers",
+            "//tensorflow/core/platform:logging",
             "//tensorflow/core/platform:types",
         ],
         "visibility": ["//visibility:private"],
@@ -140,9 +166,66 @@ TF_WINDOWS_PLATFORM_LIBRARIES = {
 
 def tf_instantiate_platform_libraries(names = []):
     for name in names:
-        native.cc_library(**TF_PLATFORM_LIBRARIES[name])
-        if name in TF_WINDOWS_PLATFORM_LIBRARIES:
-            native.cc_library(**TF_WINDOWS_PLATFORM_LIBRARIES[name])
+        # Unfortunately, this target cannot be represented as a dictionary
+        # because it uses "select"
+        if name == "platform_port":
+            native.cc_library(
+                name = "platform_port_impl",
+                srcs = [
+                    "//tensorflow/core/platform:default/port.cc",
+                ],
+                hdrs = [
+                    "//tensorflow/core/platform:cpu_info.h",
+                    "//tensorflow/core/platform:demangle.h",
+                    "//tensorflow/core/platform:host_info.h",
+                    "//tensorflow/core/platform:init_main.h",
+                    "//tensorflow/core/platform:mem.h",
+                    "//tensorflow/core/platform:numa.h",
+                    "//tensorflow/core/platform:snappy.h",
+                ],
+                copts = tf_copts() + tf_additional_numa_copts(),
+                deps = [
+                    "@com_google_absl//absl/base",
+                    "//tensorflow/core/platform:byte_order",
+                    "//tensorflow/core/platform:dynamic_annotations",
+                    "//tensorflow/core/platform:logging",
+                    "//tensorflow/core/platform:types",
+                    "//tensorflow/core/platform",
+                    "@snappy",
+                ] + tf_additional_numa_deps(),
+                visibility = ["//visibility:private"],
+                tags = ["no_oss", "manual"],
+            )
+            native.cc_library(
+                name = "windows_platform_port_impl",
+                srcs = [
+                    "//tensorflow/core/platform:windows/port.cc",
+                ],
+                hdrs = [
+                    "//tensorflow/core/platform:cpu_info.h",
+                    "//tensorflow/core/platform:demangle.h",
+                    "//tensorflow/core/platform:host_info.h",
+                    "//tensorflow/core/platform:init_main.h",
+                    "//tensorflow/core/platform:mem.h",
+                    "//tensorflow/core/platform:numa.h",
+                    "//tensorflow/core/platform:snappy.h",
+                ],
+                copts = tf_copts(),
+                deps = [
+                    "//tensorflow/core/platform",
+                    "//tensorflow/core/platform:byte_order",
+                    "//tensorflow/core/platform:dynamic_annotations",
+                    "//tensorflow/core/platform:logging",
+                    "//tensorflow/core/platform:types",
+                    "@snappy",
+                ],
+                visibility = ["//visibility:private"],
+                tags = ["no_oss", "manual"],
+            )
+        else:
+            native.cc_library(**TF_PLATFORM_LIBRARIES[name])
+            if name in TF_WINDOWS_PLATFORM_LIBRARIES:
+                native.cc_library(**TF_WINDOWS_PLATFORM_LIBRARIES[name])
 
 def tf_platform_helper_deps(name):
     return select({
