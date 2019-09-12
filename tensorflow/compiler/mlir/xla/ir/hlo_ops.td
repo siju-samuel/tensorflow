@@ -196,12 +196,12 @@ def HLO_WhileOp: HLO_Op<"while", [NoSideEffect, SameOperandsAndResultType]> {
 
 def HLO_ReduceOp: HLO_Op<"reduce", [
       NoSideEffect,
+      SameVariadicOperandSize,
       SingleBlockImplicitTerminator<"ReturnOp">
     ]>, BASE_HLO_ReduceOp {
-  // TODO(hinsu): Split operands and init into two separate variadic operands
-  // by using SameVariadicOperandSize trait.
   let arguments = (ins
-    Variadic<HLO_TensorOrTuple>:$operands_and_init,
+    Variadic<HLO_TensorOrTuple>:$operands,
+    Variadic<HLO_TensorOrTuple>:$init_values,
     ElementsAttr:$dimensions
   );
 
@@ -563,6 +563,25 @@ def HLO_DotOp: HLO_Op<"dot", [NoSideEffect]>, BASE_HLO_DotOp {
         HLO_Tensor:$rhs,
         HLO_PrecisionConfigAttr:$precision_config
     );
+  let results = (outs HLO_Tensor);
+}
+
+def DotDimensionNumbers : StructAttr<"DotDimensionNumbers", HLO_Dialect, [
+                StructFieldAttr<"lhs_batching_dimensions",   ElementsAttr>,
+                StructFieldAttr<"rhs_batching_dimensions",   ElementsAttr>,
+                StructFieldAttr<"lhs_contracting_dimensions", ElementsAttr>,
+                StructFieldAttr<"rhs_contracting_dimensions", ElementsAttr>] > {
+  let description = "Structure of dimension information for dot product";
+}
+
+def HLO_DotGeneralOp: HLO_Op<"dot_general", [NoSideEffect]>, BASE_HLO_DotGeneralOp {
+  let arguments = (ins
+        HLO_Tensor:$lhs,
+        HLO_Tensor:$rhs,
+        DotDimensionNumbers:$dot_dimension_numbers,
+        HLO_PrecisionConfigAttr:$precision_config
+  );
+
   let results = (outs HLO_Tensor);
 }
 

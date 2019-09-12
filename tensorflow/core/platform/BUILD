@@ -57,13 +57,16 @@ tf_instantiate_platform_libraries(names = [
     "cuda_libdevice_path",
     "dynamic_annotations",
     "env_time",
-    "fingerprint",
     "human_readable_json",
+    "load_library",
     "mutex",
+    "net",
     "notification",
     "platform_port",
     "rocm_rocdl_path",
     "strong_hash",
+    "subprocess",
+    "wide_char",
 ])
 
 cc_library(
@@ -198,17 +201,6 @@ cc_library(
 )
 
 cc_library(
-    name = "fingerprint",
-    hdrs = ["fingerprint.h"],
-    deps = [
-        ":fingerprint_impl",
-        ":platform",
-        ":stringpiece",
-        ":types",
-    ],
-)
-
-cc_library(
     name = "grpc_services",
     hdrs = ["grpc_services.h"],
     deps = [
@@ -230,6 +222,12 @@ cc_library(
     deps = [
         ":human_readable_json_impl",
     ],
+)
+
+cc_library(
+    name = "load_library",
+    textual_hdrs = ["load_library.h"],
+    deps = tf_platform_helper_deps("load_library_impl"),
 )
 
 cc_library(
@@ -256,6 +254,12 @@ cc_library(
     deps = [
         ":mutex_impl",
     ],
+)
+
+cc_library(
+    name = "net",
+    textual_hdrs = ["net.h"],
+    deps = tf_platform_helper_deps("net_impl"),
 )
 
 cc_library(
@@ -468,6 +472,14 @@ cc_library(
         ":strong_hash_impl",
         ":types",
     ],
+)
+
+cc_library(
+    name = "subprocess",
+    textual_hdrs = [
+        "subprocess.h",
+    ],
+    deps = tf_platform_helper_deps("subprocess_impl"),
 )
 
 cc_library(
