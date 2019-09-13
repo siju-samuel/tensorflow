@@ -16,6 +16,7 @@ limitations under the License.
 #include "tensorflow/core/platform/load_library.h"
 
 #include <Shlwapi.h>
+#undef StrCat  // Don't let StrCat be renamed to lstrcatA
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
