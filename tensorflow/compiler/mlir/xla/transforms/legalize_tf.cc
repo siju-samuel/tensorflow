@@ -15,6 +15,7 @@ limitations under the License.
 
 // This file implements logic for lowering TensorFlow dialect to XLA dialect.
 
+#include <cstdint>
 #include <numeric>
 
 #include "mlir/Dialect/StandardOps/Ops.h"  // TF:local_config_mlir
@@ -26,6 +27,7 @@ limitations under the License.
 #include "mlir/IR/StandardTypes.h"  // TF:local_config_mlir
 #include "mlir/Pass/Pass.h"  // TF:local_config_mlir
 #include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.h"
+#include "tensorflow/compiler/mlir/tensorflow/transforms/lower_tf.h"
 #include "tensorflow/compiler/mlir/xla/ir/hlo_ops.h"
 #include "tensorflow/compiler/mlir/xla/transforms/passes.h"
 
@@ -49,6 +51,16 @@ static bool isDefaultDataFormat(StringRef format) { return format == "NHWC"; }
 static size_t getFeatureDimension(StringAttr format,
                                   RankedTensorType inputType) {
   return isDefaultDataFormat(format.getValue()) ? inputType.getRank() - 1 : 1;
+}
+
+static IntegerAttr GetHLOAxisFromTFAxis(ElementsAttr attr, int64_t rank,
+                                        Builder *b) {
+  SmallVector<uint64_t, 1> index(attr.getType().getRank(), 0);
+  int64_t axis = attr.getValue<IntegerAttr>(index).getInt();
+  if (axis < 0) {
+    axis += rank;
+  }
+  return b->getI64IntegerAttr(axis);
 }
 
 // Returns minimum value for the given int or float element type.
@@ -353,6 +365,16 @@ void mlir::xla_hlo::legalizeTF(Operation *op) {
   // Add lowering patterns to the list.
   OwningRewritePatternList patterns;
   xla::populateWithGenerated(op->getContext(), &patterns);
+
+  // Add patterns that lower some of the high level TensorFlow ops to lower
+  // level TensorFlow ops. So, we don't have to target all the TensorFlow ops
+  // here for lowering to HLO.
+  //
+  // TODO(b/140964075): Switch to DialectConversion to avoid premature lowering
+  // to lower level TensorFlow ops if we actually want to target the higher
+  // level TensorFlow op directly.
+  mlir::TF::PopulateLoweringTFPatterns(op->getContext(), &patterns);
+
   patterns.insert<mlir::xla::ConvertMaxPoolOp>(op->getContext());
   patterns.insert<mlir::xla::ConvertSoftmaxOp>(op->getContext());
 
