@@ -327,7 +327,8 @@ StatusOr<mlir::Operation*> HloFunctionImporter::ImportInstruction(
           ->create<mlir::xla_hlo::SliceOp>(
               loc, result_type, operands[0],
               ConvertDimensions(instruction->slice_starts()),
-              ConvertDimensions(instruction->slice_limits()))
+              ConvertDimensions(instruction->slice_limits()),
+              ConvertDimensions(instruction->slice_strides()))
           .getOperation();
     }
     case HloOpcode::kConcatenate: {
@@ -557,23 +558,27 @@ mlir::NamedAttribute HloFunctionImporter::ConvertComparisonDirection(
           ComparisonDirectionToString(instruction->comparison_direction())));
 }
 
-mlir::ElementsAttr HloFunctionImporter::ConvertDimensions(
+mlir::DenseIntElementsAttr HloFunctionImporter::ConvertDimensions(
     llvm::ArrayRef<int64> op_dimensions) {
   llvm::SmallVector<APInt, 8> dimensions;
   dimensions.reserve(op_dimensions.size());
   for (auto value : op_dimensions) dimensions.emplace_back(APInt(64, value));
 
   return DenseIntElementsAttr::get(
-      builder_->getTensorType(dimensions.size(), builder_->getIntegerType(64)),
-      dimensions);
+             builder_->getTensorType(dimensions.size(),
+                                     builder_->getIntegerType(64)),
+             dimensions)
+      .cast<DenseIntElementsAttr>();
 }
 
-mlir::ElementsAttr HloFunctionImporter::Convert(
+mlir::DenseIntElementsAttr HloFunctionImporter::Convert(
     llvm::ArrayRef<int64_t> op_dimensions) {
-  return builder_->getDenseIntElementsAttr(
-      builder_->getTensorType(op_dimensions.size(),
-                              builder_->getIntegerType(64)),
-      op_dimensions);
+  return builder_
+      ->getDenseIntElementsAttr(
+          builder_->getTensorType(op_dimensions.size(),
+                                  builder_->getIntegerType(64)),
+          op_dimensions)
+      .cast<DenseIntElementsAttr>();
 }
 
 mlir::xla_hlo::DotDimensionNumbers

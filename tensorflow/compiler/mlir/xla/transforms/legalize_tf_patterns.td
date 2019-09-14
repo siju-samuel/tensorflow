@@ -21,7 +21,7 @@ include "tensorflow/compiler/mlir/tensorflow/ir/tf_ops.td"
 include "tensorflow/compiler/mlir/xla/ir/hlo_ops.td"
 
 def NullArrayAttr : NativeCodeCall<"ArrayAttr()">;
-def NullElementsAttr : NativeCodeCall<"ElementsAttr()">;
+def NullDenseIntElementsAttr : NativeCodeCall<"DenseIntElementsAttr()">;
 
 //===----------------------------------------------------------------------===//
 // BatchNorm op patterns.
@@ -88,6 +88,19 @@ foreach fromToBinPair = [[TF_AddOp, HLO_AddOp],
   def : DirectBinaryPat<fromToBinPair[0], fromToBinPair[1]>;
 
 //===----------------------------------------------------------------------===//
+// Compare op patterns.
+//===----------------------------------------------------------------------===//
+
+class DirectComparePat<Op FromOp, StrEnumAttrCase direction>
+  : Pat<(FromOp AnyTensor:$l, AnyTensor:$r),
+        (HLO_CompareOp $l, $r, (BinBroadcastDimensions $l, $r), direction)>;
+
+def : DirectComparePat<TF_GreaterOp, HLO_COMPARISON_DIRECTION_GT>;
+def : DirectComparePat<TF_GreaterEqualOp, HLO_COMPARISON_DIRECTION_GE>;
+def : DirectComparePat<TF_LessOp, HLO_COMPARISON_DIRECTION_LT>;
+def : DirectComparePat<TF_LessEqualOp, HLO_COMPARISON_DIRECTION_LE>;
+
+//===----------------------------------------------------------------------===//
 // Concat op patterns.
 //===----------------------------------------------------------------------===//
 
@@ -145,7 +158,7 @@ class ConstantSplat<string value> : NativeCodeCall<
 
 def : Pat<(TF_ReluOp AnyTensor:$input),
           (HLO_MaxOp (ConstantOp (ConstantSplat<"0"> $input)), $input,
-                     (NullElementsAttr))>;
+                     (NullDenseIntElementsAttr))>;
 
 def : Pat<(TF_Relu6Op AnyTensor:$input),
           (HLO_ClampOp (ConstantOp (ConstantSplat<"0"> $input)), $input,

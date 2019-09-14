@@ -410,6 +410,12 @@ void OpToOpPassAdaptorParallel::runOnOperation() {
           if (instrumentor)
             instrumentor->runAfterPipeline(pm->getOpName(), parentThreadID);
 
+          // Drop this thread from being tracked by the diagnostic handler.
+          // After this task has finished, the thread may be used outside of
+          // this pass manager context meaning that we don't want to track
+          // diagnostics from it anymore.
+          diagHandler.eraseOrderIDForThread();
+
           // Handle a failed pipeline result.
           if (failed(pipelineResult)) {
             passFailed = true;
@@ -438,7 +444,7 @@ OpToOpPassAdaptorBase *mlir::detail::getAdaptorPassBase(Pass *pass) {
 //===----------------------------------------------------------------------===//
 
 PassManager::PassManager(MLIRContext *ctx, bool verifyPasses)
-    : opPassManager(OperationName(ModuleOp::getOperationName(), ctx),
+    : OpPassManager(OperationName(ModuleOp::getOperationName(), ctx),
                     /*disableThreads=*/false, verifyPasses),
       passTiming(false) {}
 
@@ -448,22 +454,16 @@ PassManager::~PassManager() {}
 LogicalResult PassManager::run(ModuleOp module) {
   // Before running, make sure to coalesce any adjacent pass adaptors in the
   // pipeline.
-  opPassManager.getImpl().coalesceAdjacentAdaptorPasses();
+  getImpl().coalesceAdjacentAdaptorPasses();
 
   // Construct an analysis manager for the pipeline and run it.
   ModuleAnalysisManager am(module, instrumentor.get());
-  return opPassManager.run(module, am);
+  return OpPassManager::run(module, am);
 }
 
 /// Disable support for multi-threading within the pass manager.
 void PassManager::disableMultithreading(bool disable) {
-  opPassManager.getImpl().disableThreads = disable;
-}
-
-/// Add an opaque pass pointer to the current manager. This takes ownership
-/// over the provided pass pointer.
-void PassManager::addPass(std::unique_ptr<Pass> pass) {
-  opPassManager.addPass(std::move(pass));
+  getImpl().disableThreads = disable;
 }
 
 /// Add the provided instrumentation to the pass manager. This takes ownership

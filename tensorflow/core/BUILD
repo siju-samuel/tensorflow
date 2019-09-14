@@ -70,6 +70,7 @@ load(
     "if_emscripten",
     "if_ios",
     "if_linux_x86_64",
+    "if_mlir",
     "if_mobile",
     "if_not_windows",
     "if_windows",
@@ -86,6 +87,7 @@ load(
     "tf_gen_op_libs",
     "tf_generate_proto_text_sources",
     "tf_genrule_cmd_append_to_srcs",
+    "tf_openmp_copts",
     "tf_opts_nortti_if_android",
     "tf_opts_nortti_if_emscripten",
     "transitive_hdrs",
@@ -1431,6 +1433,8 @@ cc_library(
     ]) + if_tensorrt([
         "//tensorflow/compiler/tf2tensorrt:trt_engine_resource_ops_op_lib",
         "//tensorflow/compiler/tf2tensorrt:trt_op_libs",
+    ]) + if_mlir([
+        "//tensorflow/compiler/mlir/tensorflow:mlir_passthrough_op",
     ]),
     alwayslink = 1,
 )
@@ -3240,7 +3244,7 @@ tf_cuda_library(
         "public/version.h",
     ],
     hdrs = CORE_CPU_LIB_HEADERS,
-    copts = tf_copts(),
+    copts = tf_copts() + tf_openmp_copts(),
     deps = [
         ":bfc_allocator",
         ":graph",
@@ -4031,6 +4035,7 @@ tf_cc_tests(
         "framework/bfloat16_test.cc",
         "framework/cancellation_test.cc",
         "framework/common_shape_fns_test.cc",
+        "framework/dataset_test.cc",
         "framework/device_base_test.cc",
         "framework/function_test.cc",
         "framework/graph_def_util_test.cc",
