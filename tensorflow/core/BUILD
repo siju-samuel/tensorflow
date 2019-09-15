@@ -331,6 +331,9 @@ filegroup(
         "//tensorflow/core/platform:logging.h",
         "//tensorflow/core/platform:macros.h",
         "//tensorflow/core/platform:platform_strings.h",
+        "//tensorflow/core/platform:threadpool.h",
+        "//tensorflow/core/platform:threadpool_interface.h",
+        "//tensorflow/core/platform:threadpool_options.h",
         "//tensorflow/core/platform:tstring.h",
         "//tensorflow/core/platform:types.h",
     ],
@@ -1426,6 +1429,7 @@ cc_library(
         ":user_ops_op_lib",
         ":word2vec_ops",
         "//tensorflow/c/kernels:bitcast_op_lib",
+        "//tensorflow/compiler/mlir/tensorflow:mlir_passthrough_op",
     ] + if_mkl([
         ":mkl_array_ops_op_lib",
         ":mkl_nn_ops_op_lib",

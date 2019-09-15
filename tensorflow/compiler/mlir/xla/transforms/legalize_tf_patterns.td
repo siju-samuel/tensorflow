@@ -119,10 +119,14 @@ def GetHLOAxisFromTFAxis : NativeCodeCall<
 def HasRankedFirstOperand
   : Constraint<CPred<"(*$0.begin())->getType().isa<RankedTensorType>()">>;
 
-// Here, we convert from TensorFlow axis format to HLO axis format which
+// This pattern converts TensorFlow axis format to HLO axis format which
 // doesn't wrap around like TensorFlow and is always positive. For this
 // conversion, use the first input to get inputs rank. Other inputs need not be
 // ranked.
+// Defining op for `axis` is TensorFlow constant op in the pattern as during
+// the conversion, original Concat op operands still refers to the old ops even
+// if HLO constant op is introduced as an replacement for the TensorFlow
+// Constant op.
 def : Pat<(TF_ConcatV2Op $inputs, (TF_ConstOp OneElementAttr:$axis), $unused),
           (HLO_ConcatenateOp $inputs, (GetHLOAxisFromTFAxis $axis, $inputs)),
           [(HasRankedFirstOperand $inputs)]>;
@@ -157,12 +161,12 @@ class ConstantSplat<string value> : NativeCodeCall<
     "getSplat($_builder, $0, " # value # ")">;
 
 def : Pat<(TF_ReluOp AnyTensor:$input),
-          (HLO_MaxOp (ConstantOp (ConstantSplat<"0"> $input)), $input,
+          (HLO_MaxOp (HLO_ConstOp (ConstantSplat<"0"> $input)), $input,
                      (NullDenseIntElementsAttr))>;
 
 def : Pat<(TF_Relu6Op AnyTensor:$input),
-          (HLO_ClampOp (ConstantOp (ConstantSplat<"0"> $input)), $input,
-                       (ConstantOp (ConstantSplat<"6"> $input)))>;
+          (HLO_ClampOp (HLO_ConstOp (ConstantSplat<"0"> $input)), $input,
+                       (HLO_ConstOp (ConstantSplat<"6"> $input)))>;
 
 //===----------------------------------------------------------------------===//
 // Unary op patterns.

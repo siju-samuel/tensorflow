@@ -13,17 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "tensorflow/core/framework/common_shape_fns.h"
-#include "tensorflow/core/framework/op.h"
+#ifndef TENSORFLOW_CORE_PLATFORM_THREADPOOL_INTERFACE_H_
+#define TENSORFLOW_CORE_PLATFORM_THREADPOOL_INTERFACE_H_
+
+#include "third_party/eigen3/unsupported/Eigen/CXX11/ThreadPool"
 
 namespace tensorflow {
+namespace thread {
 
-REGISTER_OP("MlirPassthroughOp")
-    .Attr("mlir_module: string")
-    .Attr("Tinputs : list(type) >= 0")
-    .Input("inputs: Tinputs")
-    .Attr("Toutputs : list(type) >= 0")
-    .Output("outputs: Toutputs")
-    .SetShapeFn(shape_inference::UnknownShape);
+class ThreadPoolInterface : public Eigen::ThreadPoolInterface {};
 
+}  // namespace thread
 }  // namespace tensorflow
+
+#endif  // TENSORFLOW_CORE_PLATFORM_THREADPOOL_INTERFACE_H_

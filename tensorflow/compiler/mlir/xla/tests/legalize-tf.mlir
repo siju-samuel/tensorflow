@@ -266,9 +266,7 @@ func @identity(%arg0: tensor<1xi32>) -> tensor<1xi32> {
 
 // CHECK-LABEL: @const
 func @const() -> tensor<2xi32> {
-  // tf.Const is legalized into xla_hlo.constant, which is folded into constant.
-
-  // CHECK-NEXT: constant dense<0> : tensor<2xi32>
+  // CHECK-NEXT: "xla_hlo.constant"() {value = dense<0> : tensor<2xi32>}
   %0 = "tf.Const"() {device = "", name = "", dtype = "tfdtype$DT_INT32", value = dense<0> : tensor<2xi32>} : () -> (tensor<2xi32>)
   return %0: tensor<2xi32>
 }
@@ -292,7 +290,7 @@ func @matmul_notranspose(%arg0: tensor<5x7xf32>, %arg1: tensor<7x11xf32>) -> ten
 // CHECK-LABEL: maxpool_valid_padding
 // CHECK-SAME: %[[ARG:.*]]: tensor
 func @maxpool_valid_padding(%arg0: tensor<2x12x20x7xi32>) -> tensor<2x3x5x7xi32> {
-  // CHECK: %[[INIT:.*]] = constant dense<-2147483648> : tensor<i32>
+  // CHECK: %[[INIT:.*]] = "xla_hlo.constant"() {value = dense<-2147483648> : tensor<i32>}
   // CHECK: "xla_hlo.reduce_window"(%[[ARG]], %[[INIT]])
   // CHECK: xla_hlo.max
   // CHECK: xla_hlo.return
@@ -322,17 +320,17 @@ func @pack(%arg0: tensor<2xi32>, %arg1: tensor<2xi32>) -> tensor<2x2xi32> {
 
 // CHECK-LABEL: func @relu
 func @relu(%arg0: tensor<1xi32>) -> tensor<1xi32> {
-  // CHECK-NEXT: %cst = constant dense<0> : tensor<1xi32>
-  // CHECK-NEXT: %0 = xla_hlo.max %arg0, %cst : tensor<1xi32>
+  // CHECK-NEXT: %[[ZERO:.*]] = "xla_hlo.constant"() {value = dense<0> : tensor<1xi32>}
+  // CHECK-NEXT: xla_hlo.max %[[ZERO]], %arg0 : tensor<1xi32>
   %0 = "tf.Relu"(%arg0) : (tensor<1xi32>) -> tensor<1xi32>
   return %0: tensor<1xi32>
 }
 
 // CHECK-LABEL: func @relu6
 func @relu6(%arg0: tensor<1xi32>) -> tensor<1xi32> {
-  // CHECK-NEXT: %cst = constant dense<0> : tensor<1xi32>
-  // CHECK-NEXT: %cst_0 = constant dense<6> : tensor<1xi32>
-  // CHECK-NEXT: %0 = "xla_hlo.clamp"(%cst, %arg0, %cst_0) : (tensor<1xi32>, tensor<1xi32>, tensor<1xi32>) -> tensor<1xi32>
+  // CHECK-NEXT: %[[ZERO:.*]] = "xla_hlo.constant"() {value = dense<0> : tensor<1xi32>}
+  // CHECK-NEXT: %[[SIX:.*]] = "xla_hlo.constant"() {value = dense<6> : tensor<1xi32>}
+  // CHECK-NEXT: "xla_hlo.clamp"(%[[ZERO]], %arg0, %[[SIX]]) : (tensor<1xi32>, tensor<1xi32>, tensor<1xi32>) -> tensor<1xi32>
   %0 = "tf.Relu6"(%arg0) : (tensor<1xi32>) -> tensor<1xi32>
   return %0: tensor<1xi32>
 }
@@ -344,10 +342,9 @@ func @relu6(%arg0: tensor<1xi32>) -> tensor<1xi32> {
 // CHECK-LABEL: func @simple_softmax
 // CHECK-SAME: (%[[ARG0:.*]]: tensor<2x3xf32>)
 func @simple_softmax(%arg0: tensor<2x3xf32>) -> tensor<2x3xf32> {
-  // CHECK: %[[NEG_INF:.*]] = constant dense<0xFF800000> : tensor<f32>
-  // CHECK: %[[ZERO:.*]] = constant dense<0.000000e+00> : tensor<f32>
 
   // Verify reduce op for max computation and its body.
+  // CHECK: %[[NEG_INF:.*]] = "xla_hlo.constant"() {value = dense<0xFF800000> : tensor<f32>}
   // CHECK: %[[MAX:.*]] = "xla_hlo.reduce"(%[[ARG0]], %[[NEG_INF]])
   // CHECK:  xla_hlo.max
   // CHECK: "xla_hlo.return"
@@ -355,14 +352,17 @@ func @simple_softmax(%arg0: tensor<2x3xf32>) -> tensor<2x3xf32> {
 
   // CHECK: %[[SHIFTED_INP:.*]] = "xla_hlo.sub"(%[[ARG0]], %[[MAX]]) {broadcast_dimensions = dense<0> : tensor<1xi64>}
   // CHECK: %[[EXP:.*]] = "xla_hlo.exp"(%[[SHIFTED_INP]])
+  // CHECK: %[[CASTED_EXP:.*]] = "xla_hlo.convert"(%[[EXP]]) : (tensor<2x3xf32>) -> tensor<2x3xf32>
 
   // Verify reduce op for summation and its body.
-  // CHECK: %[[SUM:.*]] = "xla_hlo.reduce"(%[[EXP]], %[[ZERO]])
+  // CHECK: %[[ZERO:.*]] = "xla_hlo.constant"() {value = dense<0.000000e+00> : tensor<f32>}
+  // CHECK: %[[SUM:.*]] = "xla_hlo.reduce"(%[[CASTED_EXP]], %[[ZERO]])
   // CHECK:  xla_hlo.add
   // CHECK: "xla_hlo.return"
   // CHECK: {dimensions = dense<1> : tensor<1xi64>}
+  // CHECK: %[[CASTED_SUM:.*]] = "xla_hlo.convert"(%[[SUM]]) : (tensor<2xf32>) -> tensor<2xf32>
 
-  // CHECK: %[[RESULT:.*]] = "xla_hlo.div"(%[[EXP]], %[[SUM]]) {broadcast_dimensions = dense<0> : tensor<1xi64>}
+  // CHECK: %[[RESULT:.*]] = "xla_hlo.div"(%[[EXP]], %[[CASTED_SUM]]) {broadcast_dimensions = dense<0> : tensor<1xi64>}
   // return %[[RESULT]]
 
   %0 = "tf.Softmax"(%arg0) : (tensor<2x3xf32>) -> tensor<2x3xf32>

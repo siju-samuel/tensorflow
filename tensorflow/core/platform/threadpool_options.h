@@ -13,17 +13,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "tensorflow/core/framework/common_shape_fns.h"
-#include "tensorflow/core/framework/op.h"
+#ifndef TENSORFLOW_CORE_PLATFORM_THREADPOOL_OPTIONS_H_
+#define TENSORFLOW_CORE_PLATFORM_THREADPOOL_OPTIONS_H_
+
+#include "tensorflow/core/platform/threadpool_interface.h"
 
 namespace tensorflow {
+namespace thread {
 
-REGISTER_OP("MlirPassthroughOp")
-    .Attr("mlir_module: string")
-    .Attr("Tinputs : list(type) >= 0")
-    .Input("inputs: Tinputs")
-    .Attr("Toutputs : list(type) >= 0")
-    .Output("outputs: Toutputs")
-    .SetShapeFn(shape_inference::UnknownShape);
+struct ThreadPoolOptions {
+  // If not null, use this threadpool to schedule inter-op operation
+  thread::ThreadPoolInterface* inter_op_threadpool;
 
+  // If not null, use this threadpool to schedule intra-op operation
+  thread::ThreadPoolInterface* intra_op_threadpool;
+};
+
+}  // namespace thread
 }  // namespace tensorflow
+
+#endif  // TENSORFLOW_CORE_PLATFORM_THREADPOOL_OPTIONS_H_

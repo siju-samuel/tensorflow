@@ -225,9 +225,8 @@ OpPassManager &OpPassManager::nest(StringRef nestedName) {
   return nest(OperationName(nestedName, getContext()));
 }
 
-/// Add the given pass to this pass manager. The pass must either be an opaque
-/// `OperationPass`, or an `OpPass` that operates on operations of the same
-/// type as this pass manager.
+/// Add the given pass to this pass manager. If this pass has a concrete
+/// operation type, it must be the same type as this pass manager.
 void OpPassManager::addPass(std::unique_ptr<Pass> pass) {
   // If this pass runs on a different operation than this pass manager, then
   // implicitly nest a pass manager for this operation.
@@ -466,13 +465,12 @@ void PassManager::disableMultithreading(bool disable) {
   getImpl().disableThreads = disable;
 }
 
-/// Add the provided instrumentation to the pass manager. This takes ownership
-/// over the given pointer.
-void PassManager::addInstrumentation(PassInstrumentation *pi) {
+/// Add the provided instrumentation to the pass manager.
+void PassManager::addInstrumentation(std::unique_ptr<PassInstrumentation> pi) {
   if (!instrumentor)
     instrumentor.reset(new PassInstrumentor());
 
-  instrumentor->addInstrumentation(pi);
+  instrumentor->addInstrumentation(std::move(pi));
 }
 
 //===----------------------------------------------------------------------===//
@@ -606,11 +604,11 @@ void PassInstrumentor::runAfterAnalysis(llvm::StringRef name, AnalysisID *id,
     instr->runAfterAnalysis(name, id, op);
 }
 
-/// Add the given instrumentation to the collection. This takes ownership over
-/// the given pointer.
-void PassInstrumentor::addInstrumentation(PassInstrumentation *pi) {
+/// Add the given instrumentation to the collection.
+void PassInstrumentor::addInstrumentation(
+    std::unique_ptr<PassInstrumentation> pi) {
   llvm::sys::SmartScopedLock<true> instrumentationLock(impl->mutex);
-  impl->instrumentations.emplace_back(pi);
+  impl->instrumentations.emplace_back(std::move(pi));
 }
 
 constexpr AnalysisID mlir::detail::PreservedAnalyses::allAnalysesID;
