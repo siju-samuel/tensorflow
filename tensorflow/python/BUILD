@@ -384,8 +384,8 @@ cc_library(
     hdrs = ["lib/core/pybind11_status.h"],
     features = ["-parse_headers"],
     deps = [
-        ":py_exception_registry",
-        "//tensorflow/core:lib",
+        "//tensorflow/core:lib_internal",
+        "//tensorflow/core:protos_all_cc",
         "//third_party/python_runtime:headers",
         "@pybind11",
     ],
@@ -2020,7 +2020,6 @@ tf_gen_op_wrapper_private_py(
 
 tf_gen_op_wrapper_private_py(
     name = "bitwise_ops_gen",
-    require_shape_functions = True,
     visibility = [
         "//learning/brain/python/ops:__pkg__",
         "//tensorflow/compiler/tests:__pkg__",
@@ -2053,7 +2052,6 @@ tf_gen_op_wrapper_private_py(
 
 tf_gen_op_wrapper_private_py(
     name = "audio_ops_gen",
-    require_shape_functions = True,
     visibility = [
         "//learning/brain/python/ops:__pkg__",
         "//tensorflow/contrib/framework:__pkg__",
@@ -2319,7 +2317,6 @@ tf_gen_op_wrapper_private_py(
 
 tf_gen_op_wrapper_private_py(
     name = "user_ops_gen",
-    require_shape_functions = False,
 )
 
 tf_gen_op_wrapper_private_py(
