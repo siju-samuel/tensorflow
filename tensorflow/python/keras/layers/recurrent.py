@@ -119,7 +119,7 @@ class StackedRNNCells(Layer):
 
     return tuple(initial_states)
 
-  def call(self, inputs, states, constants=None, **kwargs):
+  def call(self, inputs, states, constants=None, training=None, **kwargs):
     # Recover per-cell states.
     state_size = (self.state_size[::-1]
                   if self.reverse_state_order else self.state_size)
@@ -132,6 +132,10 @@ class StackedRNNCells(Layer):
       # TF cell does not wrap the state into list when there is only one state.
       is_tf_rnn_cell = getattr(cell, '_is_tf_rnn_cell', None) is not None
       states = states[0] if len(states) == 1 and is_tf_rnn_cell else states
+      if generic_utils.has_arg(cell.call, 'training'):
+        kwargs['training'] = training
+      else:
+        kwargs.pop('training', None)
       if generic_utils.has_arg(cell.call, 'constants'):
         inputs, states = cell.call(inputs, states, constants=constants,
                                    **kwargs)
@@ -819,7 +823,9 @@ class RNN(Layer):
   def reset_states(self, states=None):
     if not self.stateful:
       raise AttributeError('Layer must be stateful.')
-    spec_shape = None if self.input_spec is None else self.input_spec[0].shape
+    spec_shape = None
+    if self.input_spec is not None:
+      spec_shape = nest.flatten(self.input_spec[0])[0].shape
     if spec_shape is None:
       # It is possible to have spec shape to be None, eg when construct a RNN
       # with a custom cell, or standard RNN layers (LSTM/GRU) which we only know
